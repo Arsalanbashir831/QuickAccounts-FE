@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { DaybookWorkspace } from "@/features/payments/daybook-workspace";
-
-export const metadata: Metadata = { title: "Daybook Entry" };
+import { redirect } from "next/navigation";
 
 export default async function DaybookPage({ params }: { params: Promise<{ companyId: string }> }) {
   const { companyId } = await params;
-  return <DaybookWorkspace companyId={companyId} />;
+  redirect(`/c/${companyId}/daybook/today`);
 }

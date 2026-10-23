@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("product dialog uses a full-viewport modal backdrop and remains usable on mobile", async ({ page }) => {
-  await page.goto("/c/demo/stock?view=products");
+  await page.goto("/c/demo/stock/products");
   await page.getByRole("button", { name: "Add Product" }).click();
   const dialog = page.getByRole("dialog", { name: "Register new product" });
   await expect(dialog).toBeVisible();
@@ -28,7 +28,7 @@ test("product dialog uses a full-viewport modal backdrop and remains usable on m
 });
 
 test("transfer dialog clearly shows the route and still dispatches a transfer", async ({ page }) => {
-  await page.goto("/c/demo/stock?view=transfers");
+  await page.goto("/c/demo/stock/transfers");
   await page.getByRole("button", { name: "Initiate Transfer" }).click();
   const dialog = page.getByRole("dialog", { name: "Initiate transfer" });
   await expect(dialog).toBeVisible();

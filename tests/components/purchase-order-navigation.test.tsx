@@ -16,7 +16,7 @@ describe("purchase order navigation", () => {
     expect(screen.queryByRole("columnheader", { name: "Actions" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Print receipt/ })).not.toBeInTheDocument();
     fireEvent.click(row);
-    expect(push).toHaveBeenLastCalledWith("/c/demo/purchases/po-381");
+    expect(push).toHaveBeenLastCalledWith("/c/demo/stock/purchases/po-381");
 
     fireEvent.keyDown(row, { key: "Enter" });
     expect(push).toHaveBeenCalledTimes(2);

@@ -6,23 +6,18 @@ import {
   ArrowRightLeft,
   ArrowUpRight,
   Barcode,
+  CalendarDays,
   CheckCircle2,
   Clock,
   Copy,
   ExternalLink,
-  Filter,
   Package,
   PackageCheck,
   PackagePlus,
-  Plus,
   RefreshCw,
-  RotateCcw,
-  Search,
-  ShieldCheck,
   SlidersHorizontal,
   Truck,
   Wrench,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -33,23 +28,16 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useInvoices } from "@/features/sales/invoice-store";
 import { usePurchaseOrders } from "@/features/purchases/purchase-store";
-import { useLocations } from "@/features/settings/location-store";
-import { stockLocations } from "../stock-data";
 import { useTransfers } from "../transfer-store";
 import {
   buildStockActivities,
-  nextAdjustmentReference,
+  parseDateScore,
   useAdjustments,
-  writeAdjustments,
   type ActivityType,
   type MovementDirection,
   type StockActivity,
-  type StockAdjustment,
 } from "../stock-activity-store";
 import { StockFormDialog } from "./stock-form-dialog";
-import { useRepairActivities } from "@/features/service/repair-activity-store";
-
-const selectClass = "h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-heading focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20";
 
 const activityBadgeConfig: Record<
   ActivityType,
@@ -58,45 +46,24 @@ const activityBadgeConfig: Record<
   Sale: { label: "Sale", tone: "danger", icon: ArrowUpRight },
   Purchase: { label: "Purchase", tone: "success", icon: ArrowDownLeft },
   Transfer: { label: "Transfer", tone: "info", icon: ArrowRightLeft },
-  Exchange: { label: "Exchange", tone: "warning", icon: RotateCcw },
-  Return: { label: "Return (RMA)", tone: "info", icon: ShieldCheck },
   Adjustment: { label: "Adjustment", tone: "neutral", icon: SlidersHorizontal },
 };
-
-const uniqueProducts = [...new Map(stockLocations.map((stock) => [stock.sku, { sku: stock.sku, name: stock.name }])).values()];
 
 export function StockActivityView({ companyId }: { companyId: string }) {
   const invoices = useInvoices(companyId);
   const purchaseOrders = usePurchaseOrders(companyId);
   const transfers = useTransfers(companyId);
   const adjustments = useAdjustments(companyId);
-  const repairActivities = useRepairActivities(companyId);
-  const locations = useLocations(companyId);
 
-  const activities = [...repairActivities, ...buildStockActivities(companyId, invoices, purchaseOrders, transfers, adjustments)];
+  const activities = buildStockActivities(companyId, invoices, purchaseOrders, transfers, adjustments);
 
-  // Filters state
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [directionFilter, setDirectionFilter] = useState<string>("all");
-  const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   // Modals state
   const [inspectActivity, setInspectActivity] = useState<StockActivity | null>(null);
   const [targetedSerial, setTargetedSerial] = useState<string | null>(null);
-  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [notice, setNotice] = useState("");
-
-  // Adjustment form state
-  const [adjSku, setAdjSku] = useState(uniqueProducts[0]?.sku ?? "SAM-A55-BLK");
-  const [adjLocation, setAdjLocation] = useState("Main Warehouse");
-  const [adjQty, setAdjQty] = useState(1);
-  const [adjSign, setAdjSign] = useState<"positive" | "negative">("negative");
-  const [adjReason, setAdjReason] = useState<StockAdjustment["reason"]>("Damaged / Faulty Write-off");
-  const [adjNotes, setAdjNotes] = useState("");
-  const [adjSerialsText, setAdjSerialsText] = useState("");
-  const [adjError, setAdjError] = useState("");
 
   // Metrics computation
   const totalInwardUnits = activities
@@ -113,30 +80,28 @@ export function StockActivityView({ companyId }: { companyId: string }) {
 
   const allRecordedSerials = new Set(activities.flatMap((a) => a.serials));
 
-  // Filtered activities
   const filteredActivities = activities.filter((act) => {
-    // Search match across serial, sku, product, reference, party, notes, location
-    const q = search.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      act.reference.toLowerCase().includes(q) ||
-      act.productName.toLowerCase().includes(q) ||
-      act.productSku.toLowerCase().includes(q) ||
-      act.party.toLowerCase().includes(q) ||
-      act.location.toLowerCase().includes(q) ||
-      (act.notes && act.notes.toLowerCase().includes(q)) ||
-      act.serials.some((s) => s.toLowerCase().includes(q));
-
-    const matchesType = typeFilter === "all" || act.type === typeFilter;
-    const matchesDirection = directionFilter === "all" || act.direction === directionFilter;
-    const matchesLocation =
-      locationFilter === "all" ||
-      act.location.toLowerCase().includes(locationFilter.toLowerCase()) ||
-      (act.fromLocation && act.fromLocation.toLowerCase() === locationFilter.toLowerCase()) ||
-      (act.toLocation && act.toLocation.toLowerCase() === locationFilter.toLowerCase());
-
-    return matchesSearch && matchesType && matchesDirection && matchesLocation;
+    const score = parseDateScore(act.date);
+    const from = fromDate ? new Date(`${fromDate}T00:00:00`).getTime() : null;
+    const to = toDate ? new Date(`${toDate}T23:59:59`).getTime() : null;
+    return (from === null || score >= from) && (to === null || score <= to);
   });
+
+  const groupedActivities = [...filteredActivities]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .reduce<{ date: string; activities: StockActivity[] }[]>((groups, act) => {
+      const last = groups.at(-1);
+      if (last?.date === act.date) last.activities.push(act);
+      else groups.push({ date: act.date, activities: [act] });
+      return groups;
+    }, []);
+
+  const formatGroupDate = (date: string) => {
+    const score = parseDateScore(date);
+    return Number.isFinite(score) && score > 0
+      ? new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(new Date(score))
+      : date;
+  };
 
   const handleCopy = (code: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -149,47 +114,6 @@ export function StockActivityView({ companyId }: { companyId: string }) {
   const handleOpenInspector = (activity: StockActivity, serial?: string) => {
     setInspectActivity(activity);
     setTargetedSerial(serial ?? null);
-  };
-
-  const handleCreateAdjustment = () => {
-    const product = uniqueProducts.find((p) => p.sku === adjSku);
-    if (!product) {
-      setAdjError("Please select a valid product.");
-      return;
-    }
-    if (adjQty < 1) {
-      setAdjError("Quantity must be at least 1 unit.");
-      return;
-    }
-
-    const serials = adjSerialsText
-      .split(/[\n,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const netQuantity = adjSign === "positive" ? adjQty : -adjQty;
-
-    const newAdjustment: StockAdjustment = {
-      id: `adj-${crypto.randomUUID()}`,
-      adjustmentRef: nextAdjustmentReference(adjustments),
-      date: new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date()),
-      productSku: product.sku,
-      productName: product.name,
-      quantity: netQuantity,
-      reason: adjReason,
-      location: adjLocation,
-      serials,
-      notes: adjNotes.trim() || undefined,
-      performedBy: "Current Operator",
-    };
-
-    writeAdjustments(companyId, [newAdjustment, ...adjustments]);
-    setShowAdjustmentModal(false);
-    setNotice(`Stock adjustment ${newAdjustment.adjustmentRef} recorded successfully.`);
-    setAdjQty(1);
-    setAdjNotes("");
-    setAdjSerialsText("");
-    setAdjError("");
   };
 
   // Lifecycle trail for a targeted serial
@@ -213,7 +137,7 @@ export function StockActivityView({ companyId }: { companyId: string }) {
               +{totalInwardUnits}{" "}
               <span className="text-xs font-normal text-muted-foreground">units</span>
             </CardTitle>
-            <p className="text-[0.7rem] text-muted-foreground">Purchases, RMAs & positive adjustments</p>
+            <p className="text-[0.7rem] text-muted-foreground">Purchases & positive adjustments</p>
           </CardHeader>
         </Card>
 
@@ -266,133 +190,43 @@ export function StockActivityView({ companyId }: { companyId: string }) {
           <div>
             <CardTitle>Stock Activity & Traceability Ledger</CardTitle>
             <CardDescription>
-              End-to-end chronological traceability of every stock movement: sales, purchases, transfers, exchanges, and warranty returns.
+              Every stock movement grouped by date, latest first: sales, purchases, transfers, and adjustments.
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => setShowAdjustmentModal(true)}>
-              <Plus className="size-4" />Record Adjustment
-            </Button>
+            <label className="relative block">
+              <span className="sr-only">Filter from date</span>
+              <CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input aria-label="Filter from date" type="date" className="w-[150px] pl-8" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            </label>
+            <span className="text-xs text-muted-foreground">to</span>
+            <Input aria-label="Filter to date" type="date" className="w-[150px]" value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
         </CardHeader>
 
-        {notice ? (
-          <div role="status" className="flex items-center justify-between border-b bg-muted/40 px-4 py-2.5 text-sm text-heading">
-            <span>{notice}</span>
-            <button type="button" onClick={() => setNotice("")} className="text-xs text-muted-foreground hover:text-foreground">
-              Dismiss
-            </button>
-          </div>
-        ) : null}
-
-        {/* Toolbar & Filter Bar */}
-        <div className="flex flex-col gap-3 border-b bg-muted/15 p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative min-w-[16rem] flex-1">
-            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              aria-label="Search stock activity"
-              placeholder="Search serial, barcode, SKU, reference (DOT-*, PO-*, TR-*, RMA-*), or contact..."
-              className="pl-8 text-xs"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Direction Filter */}
-            <div className="flex items-center rounded-lg border bg-background p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setDirectionFilter("all")}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${directionFilter === "all" ? "bg-muted font-bold text-heading shadow-xs" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => setDirectionFilter("IN")}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${directionFilter === "IN" ? "bg-success/15 font-bold text-success-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                In (+)
-              </button>
-              <button
-                type="button"
-                onClick={() => setDirectionFilter("OUT")}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${directionFilter === "OUT" ? "bg-destructive/15 font-bold text-destructive" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Out (-)
-              </button>
-              <button
-                type="button"
-                onClick={() => setDirectionFilter("TRANSFER")}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${directionFilter === "TRANSFER" ? "bg-info/15 font-bold text-info-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Transfers (⇄)
-              </button>
-            </div>
-
-            {/* Activity Type Filter */}
-            <select
-              aria-label="Filter by activity type"
-              className="h-9 rounded-md border border-input bg-background px-3 text-xs text-heading"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-            >
-              <option value="all">All Activity Types</option>
-              <option value="Sale">Sales (Outflow)</option>
-              <option value="Purchase">Purchases (Inflow)</option>
-              <option value="Transfer">Inter-Site Transfers</option>
-              <option value="Exchange">Warranty Exchanges</option>
-              <option value="Return">Customer Returns (RMA)</option>
-              <option value="Adjustment">Manual Adjustments</option>
-            </select>
-
-            {/* Location Filter */}
-            <select
-              aria-label="Filter by location"
-              className="h-9 rounded-md border border-input bg-background px-3 text-xs text-heading"
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-            >
-              <option value="all">All Locations</option>
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.name}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Ledger Table */}
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-28">Date</TableHead>
-                <TableHead className="w-32">Activity</TableHead>
-                <TableHead className="w-28">Reference</TableHead>
-                <TableHead>Product / SKU</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead>Location / Route</TableHead>
-                <TableHead>Counterparty</TableHead>
-                <TableHead>Serial / Barcodes</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Traceability</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredActivities.length ? (
-                filteredActivities.map((act) => {
+        <CardContent className="space-y-5 p-4 sm:p-5">
+          {groupedActivities.map((group) => (
+            <section key={group.date} aria-label={`Stock activity on ${group.date}`} className="overflow-hidden rounded-lg border">
+              <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+                <h2 className="font-semibold text-heading">{formatGroupDate(group.date)}</h2>
+                <p className="text-xs text-muted-foreground">{group.activities.length} {group.activities.length === 1 ? "movement" : "movements"}</p>
+              </header>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-32">Activity</TableHead>
+                    <TableHead className="w-28">Reference</TableHead>
+                    <TableHead>Product / SKU</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead>Location / Route</TableHead>
+                    <TableHead>Counterparty</TableHead>
+                    <TableHead>Serial / Barcodes</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Traceability</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                {group.activities.map((act) => {
                   const badgeCfg = activityBadgeConfig[act.type];
                   const Icon = badgeCfg.icon;
 
@@ -401,11 +235,6 @@ export function StockActivityView({ companyId }: { companyId: string }) {
 
                   return (
                     <TableRow key={act.id} className="hover:bg-muted/30">
-                      {/* Date */}
-                      <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                        {act.date}
-                      </TableCell>
-
                       {/* Activity Type */}
                       <TableCell>
                         <Badge tone={badgeCfg.tone} className="inline-flex items-center gap-1 text-[0.65rem]">
@@ -522,16 +351,14 @@ export function StockActivityView({ companyId }: { companyId: string }) {
                       </TableCell>
                     </TableRow>
                   );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={10} className="py-10 text-center text-sm text-muted-foreground">
-                    No stock activities match your current filters.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                })}
+                </TableBody>
+              </Table>
+            </section>
+          ))}
+          {groupedActivities.length === 0 ? (
+            <p className="rounded-lg border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">No stock activity in this date range.</p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -724,143 +551,6 @@ export function StockActivityView({ companyId }: { companyId: string }) {
         </StockFormDialog>
       )}
 
-      {/* Manual Stock Adjustment Dialog */}
-      {showAdjustmentModal && (
-        <StockFormDialog
-          eyebrow="Inventory Audit & Reconciliation"
-          title="Record Stock Adjustment"
-          description="Adjust physical stock on hand for damaged goods, physical count discrepancies, or opening balance intake."
-          icon={SlidersHorizontal}
-          wide
-          onClose={() => {
-            setShowAdjustmentModal(false);
-            setAdjError("");
-          }}
-          footer={
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowAdjustmentModal(false);
-                  setAdjError("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleCreateAdjustment}>
-                <CheckCircle2 className="size-4" />
-                Post Adjustment
-              </Button>
-            </>
-          }
-        >
-          <div className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block space-y-1.5 text-sm font-medium text-heading">
-                Product Item
-                <select
-                  data-dialog-autofocus
-                  className={selectClass}
-                  value={adjSku}
-                  onChange={(e) => setAdjSku(e.target.value)}
-                >
-                  {uniqueProducts.map((p) => (
-                    <option key={p.sku} value={p.sku}>
-                      {p.name} · {p.sku}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block space-y-1.5 text-sm font-medium text-heading">
-                Stock Location
-                <select
-                  className={selectClass}
-                  value={adjLocation}
-                  onChange={(e) => setAdjLocation(e.target.value)}
-                >
-                  {locations.map((loc) => (
-                    <option key={loc.id} value={loc.name}>
-                      {loc.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block space-y-1.5 text-sm font-medium text-heading">
-                Adjustment Reason
-                <select
-                  className={selectClass}
-                  value={adjReason}
-                  onChange={(e) => setAdjReason(e.target.value as StockAdjustment["reason"])}
-                >
-                  <option value="Damaged / Faulty Write-off">Damaged / Faulty Write-off (-)</option>
-                  <option value="Physical Count Discrepancy">Physical Count Discrepancy (Cycle Count)</option>
-                  <option value="Initial Stock Intake">Initial Stock Intake (+)</option>
-                  <option value="Found Inventory">Found Inventory (+)</option>
-                  <option value="Internal Store Use">Internal Store Use (-)</option>
-                </select>
-              </label>
-
-              <div className="grid grid-cols-[auto_1fr] gap-2">
-                <label className="block space-y-1.5 text-sm font-medium text-heading">
-                  Direction
-                  <select
-                    className={selectClass}
-                    value={adjSign}
-                    onChange={(e) => setAdjSign(e.target.value as "positive" | "negative")}
-                  >
-                    <option value="negative">Deduct (-)</option>
-                    <option value="positive">Add (+)</option>
-                  </select>
-                </label>
-
-                <label className="block space-y-1.5 text-sm font-medium text-heading">
-                  Quantity
-                  <Input
-                    type="number"
-                    min={1}
-                    max={1000}
-                    value={adjQty}
-                    onChange={(e) => setAdjQty(Math.max(1, Number(e.target.value) || 1))}
-                    className="h-10 text-base font-semibold tabular-nums"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <label className="block space-y-1.5 text-sm font-medium text-heading">
-              Serial Numbers / Barcodes (Optional)
-              <textarea
-                rows={2}
-                placeholder="Paste serial numbers separated by commas or new lines (optional)..."
-                className="w-full rounded-md border border-input bg-background p-2.5 font-mono text-xs text-heading focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
-                value={adjSerialsText}
-                onChange={(e) => setAdjSerialsText(e.target.value)}
-              />
-            </label>
-
-            <label className="block space-y-1.5 text-sm font-medium text-heading">
-              Adjustment Audit Notes
-              <Input
-                placeholder="Reason, investigation outcome, or authorized manager..."
-                className="h-10 text-xs"
-                value={adjNotes}
-                onChange={(e) => setAdjNotes(e.target.value)}
-              />
-            </label>
-
-            {adjError && (
-              <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                {adjError}
-              </p>
-            )}
-          </div>
-        </StockFormDialog>
-      )}
     </div>
   );
 }

@@ -44,7 +44,7 @@ export function StockBalancesView({ companyId }: { companyId: string }) {
       <div className="grid gap-4 sm:grid-cols-3">
         {([
           { key: "all", label: "Available to Sell", value: totals.available, description: "Across all locations" },
-          { key: "reserved", label: "Reserved for Shipment", value: totals.reserved, description: "Across transfers, invoices, and RMAs" },
+          { key: "reserved", label: "Reserved for Shipment", value: totals.reserved, description: "Across transfers and invoices" },
           { key: "faulty", label: "Total Faulty Stock", value: totals.faulty + totals.dead, description: `${totals.faulty} faulty · ${totals.dead} dead` },
         ] as const).map((metric) => <button
           key={metric.key}

@@ -12,13 +12,13 @@ export interface StockLocationBalance {
   dead: number;
 }
 
-export type ReservationType = "Transfer shipment" | "Unshipped invoice" | "Warranty replacement" | "Rejected warranty return";
+export type ReservationType = "Transfer shipment" | "Unshipped invoice";
 
 export interface StockReservation {
   id: string;
   sku: string;
   type: ReservationType;
-  sourceKind: "invoice" | "rma" | "transfer";
+  sourceKind: "invoice" | "transfer";
   sourceId: string;
   reference: string;
   customer?: string;
@@ -26,7 +26,6 @@ export interface StockReservation {
   location: string;
   quantity: number;
   serials: string[];
-  consumesSellableStock: boolean;
   note?: string;
   sourceStatus?: string;
 }
@@ -61,23 +60,6 @@ const legacySkuByName: Record<string, string> = {
   "Baseus Bowie H1 Headphones": "BAS-H1-GRY",
 };
 
-// Demo RMA commitments mirror the customer warranty cases. The rejected unit
-// remains customer property in custody, so it is not part of sellable on-hand.
-const rmaReservations: StockReservation[] = [
-  {
-    id: "rma-replacement-0082", sku: "SAM-A55-BLK", type: "Warranty replacement", sourceKind: "rma", sourceId: "case-1",
-    reference: "RMA-0082", customer: "Apex Mobiles", location: "Main Outlet", quantity: 1,
-    serials: ["358291048291049"], consumesSellableStock: true,
-    note: "Replacement unit reserved after an approved display touch failure claim.", sourceStatus: "Approved · Replacement issued",
-  },
-  {
-    id: "rma-rejected-0080", sku: "XIA-RN13-BLU", type: "Rejected warranty return", sourceKind: "rma", sourceId: "case-3",
-    reference: "RMA-0080", customer: "Hamza Electronics", location: "Main Outlet", quantity: 1,
-    serials: ["861928374659202"], consumesSellableStock: false,
-    note: "Customer-owned unit rejected after water ingress inspection; held for return shipment.", sourceStatus: "Physical damage · Warranty void",
-  },
-];
-
 export function buildStockBalances(invoices: InvoiceRecord[], transfers: StockTransfer[] = []): StockBalance[] {
   const reservations = new Map<string, StockReservation[]>();
 
@@ -95,17 +77,11 @@ export function buildStockBalances(invoices: InvoiceRecord[], transfers: StockTr
       existing.push({
         id: `invoice-${invoice.id}-${itemIndex}`, sku, type: "Unshipped invoice", sourceKind: "invoice", sourceId: invoice.id,
         reference: invoice.reference, customer: invoice.customer, location: stock.location, quantity: item.qty,
-        serials: item.serials ?? (item.serial ? [item.serial] : []), consumesSellableStock: true,
+        serials: item.serials ?? (item.serial ? [item.serial] : []),
         note: "Ordered on an invoice and awaiting shipment.", sourceStatus: "Preparing",
       });
       reservations.set(stock.id, existing);
     }
-  }
-
-  for (const reservation of rmaReservations) {
-    const stock = stockLocations.find((entry) => entry.sku === reservation.sku && entry.location === reservation.location);
-    if (!stock) continue;
-    reservations.set(stock.id, [...(reservations.get(stock.id) ?? []), reservation]);
   }
 
   for (const transfer of transfers) {
@@ -116,7 +92,7 @@ export function buildStockBalances(invoices: InvoiceRecord[], transfers: StockTr
       id: `transfer-${transfer.id}`, sku: transfer.productSku, type: "Transfer shipment", sourceKind: "transfer",
       sourceId: transfer.id, reference: transfer.transferRef, destination: transfer.toSite,
       location: transfer.fromSite, quantity: transfer.itemsCount, serials: transfer.serials,
-      consumesSellableStock: true, note: `Stock committed for transfer to ${transfer.toSite}.`, sourceStatus: transfer.status,
+      note: `Stock committed for transfer to ${transfer.toSite}.`, sourceStatus: transfer.status,
     };
     reservations.set(stock.id, [...(reservations.get(stock.id) ?? []), reservation]);
   }
@@ -124,8 +100,7 @@ export function buildStockBalances(invoices: InvoiceRecord[], transfers: StockTr
   return stockLocations.map((stock) => {
     const linked = reservations.get(stock.id) ?? [];
     const reserved = linked.reduce((sum, reservation) => sum + reservation.quantity, 0);
-    const allocated = linked.reduce((sum, reservation) => sum + (reservation.consumesSellableStock ? reservation.quantity : 0), 0);
-    return { ...stock, reserved, available: Math.max(0, stock.onHand - stock.faulty - stock.dead - allocated), reservations: linked };
+    return { ...stock, reserved, available: Math.max(0, stock.onHand - stock.faulty - stock.dead - reserved), reservations: linked };
   });
 }
 

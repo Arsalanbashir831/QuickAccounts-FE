@@ -18,7 +18,7 @@ export function PurchaseOrdersView({ companyId }: { companyId: string }) {
   const [search, setSearch] = useState("");
   const filtered = orders.filter((order) => `${order.poNumber} ${order.supplier} ${order.supplierInvoice} ${order.destination}`.toLowerCase().includes(search.toLowerCase()));
   const outstanding = orders.filter((order) => order.receivingStatus !== "Received");
-  const orderHref = (order: PurchaseOrder) => `/c/${encodeURIComponent(companyId)}/purchases/${encodeURIComponent(order.id)}`;
+  const orderHref = (order: PurchaseOrder) => `/c/${encodeURIComponent(companyId)}/stock/purchases/${encodeURIComponent(order.id)}`;
   const openOrder = (order: PurchaseOrder) => router.push(orderHref(order));
   const handleRowClick = (event: MouseEvent<HTMLTableRowElement>, order: PurchaseOrder) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
@@ -43,7 +43,7 @@ export function PurchaseOrdersView({ companyId }: { companyId: string }) {
           <div><CardTitle>Purchase Orders</CardTitle><CardDescription>Supplier commitments and stock destinations</CardDescription></div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative w-full sm:w-60"><Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Search PO, supplier or invoice" aria-label="Search purchase orders" className="pl-8" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
-            <Button size="sm" asChild><Link href={`/c/${companyId}/purchases/new`}><Plus className="size-4" />New Purchase Order</Link></Button>
+            <Button size="sm" asChild><Link href={`/c/${companyId}/stock/purchases/new`}><Plus className="size-4" />New Purchase Order</Link></Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">

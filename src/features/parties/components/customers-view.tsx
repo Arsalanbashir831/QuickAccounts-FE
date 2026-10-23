@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-interface CustomerRecord {
+export interface CustomerRecord {
   id: string;
   name: string;
   phone: string;
@@ -22,7 +22,7 @@ interface CustomerRecord {
   status: "Active" | "Credit Hold";
 }
 
-const mockCustomers: CustomerRecord[] = [
+export const mockCustomers: CustomerRecord[] = [
   {
     id: "cust-1",
     name: "Apex Mobiles (Kashif)",

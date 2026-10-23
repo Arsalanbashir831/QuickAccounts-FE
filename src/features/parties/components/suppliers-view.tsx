@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-interface SupplierRecord {
+export interface SupplierRecord {
   id: string;
   name: string;
   contactPerson: string;
@@ -18,7 +18,7 @@ interface SupplierRecord {
   activeOrders: number;
 }
 
-const mockSuppliers: SupplierRecord[] = [
+export const mockSuppliers: SupplierRecord[] = [
   {
     id: "sup-1",
     name: "Mumtaz Distributors",

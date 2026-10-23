@@ -10,17 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useInvoices } from "@/features/sales/invoice-store";
-import { buildStockBalances, stockTotals, type ReservationType } from "../stock-data";
+import { buildStockBalances, stockTotals } from "../stock-data";
 import { useTransfers } from "../transfer-store";
 
-const reservationTone = (type: ReservationType) => type === "Transfer shipment" || type === "Unshipped invoice" ? "info" : type === "Warranty replacement" ? "warning" : "danger";
 
 export function StockDetails({ companyId, sku }: { companyId: string; sku: string }) {
   const router = useRouter();
   const invoices = useInvoices(companyId);
   const transfers = useTransfers(companyId);
   const locations = buildStockBalances(invoices, transfers).filter((row) => row.sku === sku);
-  const returnHref = `/c/${encodeURIComponent(companyId)}/stock?view=stock`;
+  const returnHref = `/c/${encodeURIComponent(companyId)}/stock/products`;
   const productHref = `/c/${encodeURIComponent(companyId)}/stock/${encodeURIComponent(sku)}`;
 
   const handleRowClick = (event: MouseEvent<HTMLTableRowElement>, href: string) => {
@@ -64,18 +63,17 @@ export function StockDetails({ companyId, sku }: { companyId: string; sku: strin
       </Card>
 
       <Card>
-        <CardHeader className="border-b"><CardTitle>Reserved for Shipment</CardTitle><CardDescription>Transfers, unshipped invoices, warranty replacements, and rejected warranty returns. Select a row for details.</CardDescription></CardHeader>
+        <CardHeader className="border-b"><CardTitle>Reserved for Shipment</CardTitle><CardDescription>Transfers and unshipped invoices. Select a row for details.</CardDescription></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader><TableRow><TableHead>Reservation type</TableHead><TableHead>Reference</TableHead><TableHead>Customer / destination</TableHead><TableHead>Stock location</TableHead><TableHead className="text-right">Units</TableHead><TableHead>Serials / barcodes</TableHead></TableRow></TableHeader>
             <TableBody>{reservations.length ? reservations.map((reservation) => {
               const href = `${productHref}/reservations/${encodeURIComponent(reservation.id)}`;
-              return <TableRow key={reservation.id} role="link" tabIndex={0} aria-label={`View ${reservation.type} reservation ${reservation.reference}`} className="cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary hover:bg-primary/5" onClick={(event) => handleRowClick(event, href)} onKeyDown={(event) => handleRowKeyDown(event, href)}><TableCell><Badge tone={reservationTone(reservation.type)}>{reservation.type}</Badge></TableCell><TableCell className="font-mono font-bold text-primary">{reservation.reference}</TableCell><TableCell>{reservation.destination ?? reservation.customer}</TableCell><TableCell className="text-muted-foreground">{reservation.location}</TableCell><TableCell className="text-right tabular-nums">{reservation.quantity}</TableCell><TableCell className="text-sm text-muted-foreground">{reservation.serials.length ? `${reservation.serials.length} recorded` : "Not recorded"}</TableCell></TableRow>;
+              return <TableRow key={reservation.id} role="link" tabIndex={0} aria-label={`View ${reservation.type} reservation ${reservation.reference}`} className="cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary hover:bg-primary/5" onClick={(event) => handleRowClick(event, href)} onKeyDown={(event) => handleRowKeyDown(event, href)}><TableCell><Badge tone={"info"}>{reservation.type}</Badge></TableCell><TableCell className="font-mono font-bold text-primary">{reservation.reference}</TableCell><TableCell>{reservation.destination ?? reservation.customer}</TableCell><TableCell className="text-muted-foreground">{reservation.location}</TableCell><TableCell className="text-right tabular-nums">{reservation.quantity}</TableCell><TableCell className="text-sm text-muted-foreground">{reservation.serials.length ? `${reservation.serials.length} recorded` : "Not recorded"}</TableCell></TableRow>;
             }) : <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">No units are reserved for shipment.</TableCell></TableRow>}</TableBody>
           </Table>
         </CardContent>
       </Card>
-      {reservations.some((reservation) => !reservation.consumesSellableStock) ? <p className="text-xs text-muted-foreground">Customer-owned rejected warranty returns are held for shipment but are not deducted from available-to-sell stock.</p> : null}
     </div>
   );
 }

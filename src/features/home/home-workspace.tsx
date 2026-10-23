@@ -60,7 +60,7 @@ const priorityTasks = [
     title: "Receive PO-0382",
     detail: "Mumtaz Distributors · 32 units",
     kind: "Stock",
-    href: "purchases?view=receiving",
+    href: "stock/purchases",
   },
   {
     title: "Review price exception",
@@ -72,7 +72,7 @@ const priorityTasks = [
     title: "Resolve transfer shortage",
     detail: "TR-0198 · 2 units in transit",
     kind: "Exception",
-    href: "stock?view=transfers",
+    href: "stock/transfers",
   },
 ];
 
@@ -202,7 +202,7 @@ export const HomeWorkspace = ({ companyId }: { companyId: string }) => (
 
               <div className="pt-3">
                 <Button asChild className="w-full" variant="outline" size="sm">
-                  <Link href={`/c/${companyId}/daybook`}>
+                  <Link href={`/c/${companyId}/daybook/today`}>
                     Open Daybook &rarr;
                   </Link>
                 </Button>

@@ -73,13 +73,13 @@ export function NewPurchaseOrder({ companyId }: { companyId: string }) {
     };
     try {
       writePurchaseOrders(companyId, [order, ...orders]);
-      router.push(`/c/${companyId}/purchases?view=orders`);
+      router.push(`/c/${companyId}/stock/purchases`);
     } catch { setError("Could not save this order in this browser. Please check available storage and try again."); }
   };
 
   return (
     <div className="workspace-enter space-y-5 pb-10">
-      <div><Button asChild variant="ghost" size="sm"><Link href={`/c/${companyId}/purchases?view=orders`}><ArrowLeft className="size-4" />Back to purchase orders</Link></Button></div>
+      <div><Button asChild variant="ghost" size="sm"><Link href={`/c/${companyId}/stock/purchases`}><ArrowLeft className="size-4" />Back to purchase orders</Link></Button></div>
       <WorkspaceHeader eyebrow="Purchases · New order" title="New Purchase Order" description="Choose the supplier and receiving location, then build an itemised order with optional serials." />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.8fr)] xl:items-start">
         <div className="space-y-5">

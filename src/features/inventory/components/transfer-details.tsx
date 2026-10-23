@@ -25,7 +25,7 @@ export function TransferDetails({ companyId, transferId }: { companyId: string; 
   const transfers = useTransfers(companyId);
   const [notice, setNotice] = useState("");
   const transfer = transfers.find((entry) => entry.id === transferId);
-  const returnHref = `/c/${encodeURIComponent(companyId)}/stock?view=transfers`;
+  const returnHref = `/c/${encodeURIComponent(companyId)}/stock/transfers`;
 
   if (!transfer) return <div className="workspace-enter space-y-5"><Button asChild size="sm" variant="ghost"><Link href={returnHref}><ArrowLeft className="size-4" />Back to transfers</Link></Button><Card><CardHeader><CardTitle>Transfer not found</CardTitle><CardDescription>This transfer is unavailable in this browser.</CardDescription></CardHeader></Card></div>;
 

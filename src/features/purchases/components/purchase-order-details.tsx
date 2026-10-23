@@ -20,7 +20,7 @@ export function PurchaseOrderDetails({ companyId, orderId }: { companyId: string
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [notice, setNotice] = useState("");
   const order = orders.find((entry) => entry.id === orderId);
-  const returnHref = `/c/${companyId}/purchases?view=orders`;
+  const returnHref = `/c/${companyId}/stock/purchases`;
 
   const updateSerials = (currentOrder: PurchaseOrder, itemId: string, nextSerials: string[]) => {
     const nextOrders = orders.map((entry) => entry.id === currentOrder.id ? {

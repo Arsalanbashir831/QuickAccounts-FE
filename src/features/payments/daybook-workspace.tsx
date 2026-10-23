@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
-import { ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronRight, FileText, Plus, Search, X } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, FileText, Plus, Search, X } from "lucide-react";
+import Link from "next/link";
 import { WorkspaceHeader } from "@/components/shell/workspace-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,7 +87,11 @@ const formatDate = (value: string, options: Intl.DateTimeFormatOptions = { day: 
 const money = (amount: number) => `$${amount.toLocaleString("en-PK", { maximumFractionDigits: 2 })}`;
 const kindTone = (kind: EntryKind) => kind === "Sale" || kind === "Payment" || kind === "Income" ? "success" : kind === "Expense" ? "warning" : "info";
 
-export const DaybookWorkspace = ({ companyId }: { companyId: string }) => {
+const noopSubscribe = () => () => {};
+
+export const DaybookWorkspace = ({ companyId, mode }: { companyId: string; mode: "today" | "history" }) => {
+  const isToday = mode === "today";
+  const todayDate = useSyncExternalStore(noopSubscribe, localISODate, () => "");
   const locations = useLocations(companyId);
   const invoices = useInvoices(companyId);
   const purchaseOrders = usePurchaseOrders(companyId);
@@ -138,7 +143,7 @@ export const DaybookWorkspace = ({ companyId }: { companyId: string }) => {
   const [toDate, setToDate] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [type, setType] = useState<"Income" | "Expense" | "Payment received" | "Payment sent">("Expense");
+  const [type, setType] = useState<"Income" | "Expense">("Expense");
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
   const [party, setParty] = useState("");
@@ -161,11 +166,11 @@ export const DaybookWorkspace = ({ companyId }: { companyId: string }) => {
 
   const cashAccounts = postingAccounts.filter((account) => account.group === "Assets" && /cash/i.test(account.name));
   const bankAccounts = postingAccounts.filter((account) => account.group === "Assets" && /bank|settlement/i.test(account.name));
-  const isMoneyIn = type === "Income" || type === "Payment received";
+  const isMoneyIn = type === "Income";
   const contraAccounts = method === "Cash" ? cashAccounts : method === "Bank" ? bankAccounts : postingAccounts.filter((account) => account.group === (isMoneyIn ? "Assets" : "Liabilities") && (isMoneyIn ? account.code === "1100" : account.code === "2000"));
   const postingChoices = postingAccounts.filter((account) => account.code !== "1000");
   const filteredEntries = sourceEntries
-    .filter((entry) => (!fromDate || entry.date >= fromDate) && (!toDate || entry.date <= toDate))
+    .filter((entry) => isToday ? entry.date === todayDate : (!fromDate || entry.date >= fromDate) && (!toDate || entry.date <= toDate))
     .filter((entry) => !search.trim() || [entry.reference, entry.description, entry.party, entry.accountName, entry.kind].some((value) => value.toLowerCase().includes(search.trim().toLowerCase())))
     .sort((left, right) => right.date.localeCompare(left.date) || right.reference.localeCompare(left.reference));
   const groupedEntries = useMemo(() => {
@@ -193,23 +198,25 @@ export const DaybookWorkspace = ({ companyId }: { companyId: string }) => {
       setFormError("Complete the date, description, chart account, payment account, and a positive amount.");
       return;
     }
-    const isReceipt = type === "Income" || type === "Payment received";
-    const entry: DaybookEntry = { id: `manual:${crypto.randomUUID()}`, date, reference: reference.trim() || `DB-${String(Date.now()).slice(-6)}`, kind: type === "Payment received" || type === "Payment sent" ? "Payment" : type, direction: isReceipt ? "in" : "out", description: description.trim(), party: party.trim(), accountCode: selectedAccount.code, accountName: selectedAccount.name, contraCode: selectedContra.code, contraName: selectedContra.name, method, amount: value, location: location.trim() || "—", notes: notes.trim() };
+    const isReceipt = type === "Income";
+    const entry: DaybookEntry = { id: `manual:${crypto.randomUUID()}`, date, reference: reference.trim() || `DB-${String(Date.now()).slice(-6)}`, kind: type, direction: isReceipt ? "in" : "out", description: description.trim(), party: party.trim(), accountCode: selectedAccount.code, accountName: selectedAccount.name, contraCode: selectedContra.code, contraName: selectedContra.name, method, amount: value, location: location.trim() || "—", notes: notes.trim() };
     try {
       writeManualEntries(companyId, [entry, ...manualEntries]);
-      setShowAddForm(false); setSelectedId(entry.id); setNotice("Entry added to the daybook.");
+      setShowAddForm(false); setSelectedId(entry.id); setNotice(isToday && entry.date !== todayDate ? `Entry added for ${formatDate(entry.date)}. It is listed in Daybook History.` : "Entry added to the daybook.");
     } catch {
       setFormError("Could not save this entry in the browser. Check available storage and try again.");
     }
   };
 
   return <div className="workspace-enter space-y-5 pb-8">
-    <WorkspaceHeader eyebrow="Accounts · Daily record" title="Daybook" description="A day grouped register of sales, payments, purchases, expenses, and other chart of accounts entries." action={<Button onClick={openAddForm}><Plus className="size-4" />Add entry</Button>} />
+    {isToday
+      ? <WorkspaceHeader eyebrow="Daybook Entry" title="Today Entry" description={`Everything recorded today${todayDate ? `, ${formatDate(todayDate, { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}` : ""}. Use Add entry for income and expenses.`} action={<Button onClick={openAddForm}><Plus className="size-4" />Add entry</Button>} />
+      : <WorkspaceHeader eyebrow="Daybook Entry" title="Daybook History" description="All past entries grouped by day. Filter by date range or search for a reference, contact, or account." />}
 
     {notice ? <p role="status" className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/10 px-4 py-3 text-sm font-medium text-success-foreground"><Check className="size-4" />{notice}</p> : null}
 
     <div className="grid gap-4 sm:grid-cols-3">
-      <Card><CardHeader className="p-4"><CardDescription>Entries in view</CardDescription><CardTitle className="font-mono text-2xl">{filteredEntries.length}</CardTitle><p className="text-xs text-muted-foreground">Across {groupedEntries.length} {groupedEntries.length === 1 ? "day" : "days"}</p></CardHeader></Card>
+      <Card><CardHeader className="p-4"><CardDescription>{isToday ? "Entries today" : "Entries in view"}</CardDescription><CardTitle className="font-mono text-2xl">{filteredEntries.length}</CardTitle>{isToday ? null : <p className="text-xs text-muted-foreground">Across {groupedEntries.length} {groupedEntries.length === 1 ? "day" : "days"}</p>}</CardHeader></Card>
       <Card><CardHeader className="p-4"><CardDescription>Money in</CardDescription><CardTitle className="font-mono text-2xl text-success-foreground">{money(totals.moneyIn)}</CardTitle><p className="text-xs text-muted-foreground">Sales, receipts, and income</p></CardHeader></Card>
       <Card><CardHeader className="p-4"><CardDescription>Money out</CardDescription><CardTitle className="font-mono text-2xl text-destructive">{money(totals.moneyOut)}</CardTitle><p className="text-xs text-muted-foreground">Purchases, expenses, and payments</p></CardHeader></Card>
     </div>
@@ -217,11 +224,11 @@ export const DaybookWorkspace = ({ companyId }: { companyId: string }) => {
     <div className={`grid items-start gap-5 ${selectedEntry ? "xl:grid-cols-[minmax(0,1fr)_360px]" : "grid-cols-1"}`}>
       <Card>
         <CardHeader className="flex flex-col gap-4 border-b sm:flex-row sm:items-center sm:justify-between">
-          <div><CardTitle>Daybook entries</CardTitle><CardDescription>Sales, payments, purchases, and manual entries are grouped by transaction date.</CardDescription></div>
+          <div><CardTitle>{isToday ? "Today's entries" : "Daybook entries"}</CardTitle><CardDescription>Sales, payments, purchases, and manual entries{isToday ? " dated today." : ", grouped by date."}</CardDescription></div>
           <div className="flex flex-wrap items-center gap-2">
-            <label className="relative"><span className="sr-only">Filter from date</span><CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Filter from date" type="date" className="w-[150px] pl-8" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
+            {isToday ? null : <><label className="relative"><span className="sr-only">Filter from date</span><CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Filter from date" type="date" className="w-[150px] pl-8" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
             <span className="text-xs text-muted-foreground">to</span>
-            <Input aria-label="Filter to date" type="date" className="w-[150px]" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+            <Input aria-label="Filter to date" type="date" className="w-[150px]" value={toDate} onChange={(event) => setToDate(event.target.value)} /></>}
             <div className="relative w-full sm:w-48"><Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Search daybook" placeholder="Search entries" className="pl-8" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
           </div>
         </CardHeader>
@@ -246,7 +253,9 @@ export const DaybookWorkspace = ({ companyId }: { companyId: string }) => {
               </TableBody></Table></div>
             </section>;
           })}
-          {groupedEntries.length === 0 ? <div className="rounded-lg border border-dashed px-6 py-12 text-center"><FileText className="mx-auto size-8 text-muted-foreground" /><p className="mt-3 font-semibold text-heading">No entries for these filters</p><p className="mt-1 text-sm text-muted-foreground">Adjust the date range or search, or add a manual entry.</p><Button className="mt-4" variant="outline" onClick={openAddForm}><Plus className="size-4" />Add entry</Button></div> : null}
+          {groupedEntries.length === 0 ? <div className="rounded-lg border border-dashed px-6 py-12 text-center"><FileText className="mx-auto size-8 text-muted-foreground" />{isToday
+            ? <><p className="mt-3 font-semibold text-heading">{search.trim() ? "No matching entries today" : "Nothing recorded today yet"}</p><p className="mt-1 text-sm text-muted-foreground">Sales and purchases made today appear here automatically. Add income or expenses yourself.</p><div className="mt-4 flex flex-wrap justify-center gap-2"><Button onClick={openAddForm}><Plus className="size-4" />Add entry</Button><Button asChild variant="outline"><Link href={`/c/${companyId}/daybook/history`}>View Daybook History</Link></Button></div></>
+            : <><p className="mt-3 font-semibold text-heading">No entries for these filters</p><p className="mt-1 text-sm text-muted-foreground">Adjust the date range or search.</p></>}</div> : null}
         </CardContent>
       </Card>
 
@@ -271,10 +280,10 @@ export const DaybookWorkspace = ({ companyId }: { companyId: string }) => {
 
     {showAddForm ? <div className="fixed inset-0 z-50 flex justify-end bg-background/25 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAddForm(false); }}>
       <Card role="dialog" aria-modal="true" aria-labelledby="add-daybook-title" className="flex h-full max-h-screen w-full max-w-xl flex-col overflow-hidden rounded-none shadow-xl sm:rounded-l-xl">
-        <CardHeader className="flex-row items-start justify-between border-b"><div><CardTitle id="add-daybook-title">Add daybook entry</CardTitle><CardDescription>Record a one-off income, expense, or payment using chart accounts.</CardDescription></div><Button variant="ghost" size="icon" aria-label="Close add entry form" onClick={() => setShowAddForm(false)}><X className="size-4" /></Button></CardHeader>
+        <CardHeader className="flex-row items-start justify-between border-b"><div><CardTitle id="add-daybook-title">Add daybook entry</CardTitle><CardDescription>Record an income or expense entry using chart accounts.</CardDescription></div><Button variant="ghost" size="icon" aria-label="Close add entry form" onClick={() => setShowAddForm(false)}><X className="size-4" /></Button></CardHeader>
         <CardContent className="overflow-y-auto p-5"><form onSubmit={submit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1.5 text-sm font-medium">Entry type<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={type} onChange={(event) => { setType(event.target.value as "Income" | "Expense" | "Payment received" | "Payment sent"); setContraCode(""); }}><option>Expense</option><option>Income</option><option>Payment received</option><option>Payment sent</option></select></label>
+            <label className="block space-y-1.5 text-sm font-medium">Entry type<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={type} onChange={(event) => { setType(event.target.value as "Income" | "Expense"); setContraCode(""); }}><option value="Expense">Expense</option><option value="Income">Income</option></select></label>
             <label className="block space-y-1.5 text-sm font-medium">Date<Input required type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
           </div>
           <label className="block space-y-1.5 text-sm font-medium">Description<Input required value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What is this entry for?" /></label>

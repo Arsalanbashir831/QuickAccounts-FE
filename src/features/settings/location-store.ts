@@ -9,6 +9,10 @@ export interface StockLocation {
   address?: string;
   code?: string;
   phone?: string;
+  email?: string;
+  contactName?: string;
+  city?: string;
+  notes?: string;
 }
 
 const defaults: StockLocation[] = [

@@ -5,7 +5,7 @@ import type { InvoiceRecord } from "@/features/sales/invoice-store";
 import type { PurchaseOrder } from "@/features/purchases/purchase-store";
 import type { StockTransfer } from "./transfer-store";
 
-export type ActivityType = "Sale" | "Purchase" | "Transfer" | "Exchange" | "Return" | "Adjustment";
+export type ActivityType = "Sale" | "Purchase" | "Transfer" | "Adjustment";
 export type MovementDirection = "IN" | "OUT" | "TRANSFER";
 
 export interface StockActivity {
@@ -127,7 +127,7 @@ const legacySkuMap: Record<string, string> = {
   "Baseus Bowie H1 ANC Wireless Headphones": "BAS-H1-GRY",
 };
 
-function parseDateScore(dateStr: string): number {
+export function parseDateScore(dateStr: string): number {
   try {
     const parsed = new Date(dateStr).getTime();
     if (!Number.isNaN(parsed)) return parsed;
@@ -187,7 +187,7 @@ export function buildStockActivities(
         type: "Purchase",
         direction: "IN",
         reference: order.poNumber,
-        referenceHref: `/c/${encodeURIComponent(companyId)}/purchases/${encodeURIComponent(order.id)}`,
+        referenceHref: `/c/${encodeURIComponent(companyId)}/stock/purchases/${encodeURIComponent(order.id)}`,
         date: order.date,
         timestamp: parseDateScore(order.date) + 1800000,
         productName: item.name,
@@ -227,83 +227,7 @@ export function buildStockActivities(
     });
   }
 
-  // 4. Exchanges & Warranty Returns (RMA)
-  activities.push(
-    {
-      id: "rma-case-1-replacement",
-      type: "Exchange",
-      direction: "OUT",
-      reference: "RMA-0082",
-      referenceHref: `/c/${encodeURIComponent(companyId)}/returns?view=customers`,
-      date: "08 Oct 2026",
-      timestamp: parseDateScore("08 Oct 2026") + 2800000,
-      productName: "Samsung Galaxy A55 5G (8/256GB)",
-      productSku: "SAM-A55-BLK",
-      quantity: 1,
-      location: "Main Outlet",
-      party: "Apex Mobiles",
-      partyRole: "Customer",
-      serials: ["358291048291049"],
-      status: "Replacement Issued",
-      notes: "Warranty exchange: brand new unit dispatched to customer after approved display claim.",
-    },
-    {
-      id: "rma-case-1-intake",
-      type: "Return",
-      direction: "IN",
-      reference: "RMA-0082",
-      referenceHref: `/c/${encodeURIComponent(companyId)}/returns?view=customers`,
-      date: "08 Oct 2026",
-      timestamp: parseDateScore("08 Oct 2026") + 2700000,
-      productName: "Samsung Galaxy A55 5G (8/256GB)",
-      productSku: "SAM-A55-BLK",
-      quantity: 1,
-      location: "Main Outlet",
-      party: "Apex Mobiles",
-      partyRole: "Customer",
-      serials: ["358291048291048"],
-      status: "Defective Received",
-      notes: "Customer defective intake: display touch failure, returned from invoice DOT-1048.",
-    },
-    {
-      id: "rma-case-2-intake",
-      type: "Return",
-      direction: "IN",
-      reference: "RMA-0081",
-      referenceHref: `/c/${encodeURIComponent(companyId)}/returns?view=customers`,
-      date: "07 Oct 2026",
-      timestamp: parseDateScore("07 Oct 2026") + 2500000,
-      productName: "Baseus Bowie H1 ANC Headphones",
-      productSku: "BAS-H1-GRY",
-      quantity: 1,
-      location: "Main Outlet",
-      party: "Walk-in Customer",
-      partyRole: "Customer",
-      serials: ["BS-H1-9921"],
-      status: "Under Diagnosis",
-      notes: "Warranty return intake: battery discharging rapidly, under bench diagnosis.",
-    },
-    {
-      id: "rma-case-3-intake",
-      type: "Return",
-      direction: "IN",
-      reference: "RMA-0080",
-      referenceHref: `/c/${encodeURIComponent(companyId)}/returns?view=customers`,
-      date: "03 Oct 2026",
-      timestamp: parseDateScore("03 Oct 2026") + 1500000,
-      productName: "Redmi Note 13 Pro (12/512GB)",
-      productSku: "XIA-RN13-BLU",
-      quantity: 1,
-      location: "Main Outlet",
-      party: "Hamza Electronics",
-      partyRole: "Customer",
-      serials: ["861928374659202"],
-      status: "Void / Custody Hold",
-      notes: "Defective unit intake: water ingress detected; held in custody for customer collection.",
-    },
-  );
-
-  // 5. Adjustments & Stock Takes
+  // 4. Adjustments & Stock Takes
   for (const adj of adjustments) {
     activities.push({
       id: `adj-${adj.id}`,

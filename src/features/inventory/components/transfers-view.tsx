@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, Clock, PackageCheck, Plus, Search, Truck } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, PackageCheck, Plus, Truck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { SerialEntryTable } from "@/features/sales/components/serial-entry-table
 import { addSerialCodes, pasteSerialCodes } from "@/features/sales/components/serial-code-utils";
 import { useInvoices } from "@/features/sales/invoice-store";
 import { useLocations } from "@/features/settings/location-store";
+import { parseDateScore } from "../stock-activity-store";
 import { buildStockBalances, stockLocations } from "../stock-data";
 import {
   nextTransferReference,
@@ -33,8 +34,6 @@ export function TransfersView({ companyId }: { companyId: string }) {
   const invoices = useInvoices(companyId);
   const locations = useLocations(companyId);
   const balances = buildStockBalances(invoices, transfers);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [notice, setNotice] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [fromSite, setFromSite] = useState("Main Warehouse");
@@ -52,16 +51,20 @@ export function TransfersView({ companyId }: { companyId: string }) {
   const product = products.find((entry) => entry.sku === productSku);
   const available = balances.find((row) => row.sku === productSku && row.location === fromSite)?.available ?? 0;
   const duplicateSerials = new Set(serials.map((serial) => serial.trim()).filter((serial, index, all) => serial && all.indexOf(serial) !== index));
-  const filtered = transfers.filter((transfer) => {
-    const matchesSearch = `${transfer.transferRef} ${transfer.productSku} ${transfer.productName} ${transfer.fromSite} ${transfer.toSite}`.toLowerCase().includes(search.trim().toLowerCase());
-    const matchesStatus = statusFilter === "all" || (
-      statusFilter === "preparing" ? (transfer.status === "Preparing" || transfer.status === "Requested") :
-      statusFilter === "shipped" ? (transfer.status === "Shipped" || transfer.status === "In Transit" || transfer.status === "Dispatched") :
-      statusFilter === "received" ? transfer.status === "Received" :
-      transfer.status.toLowerCase() === statusFilter
-    );
-    return matchesSearch && matchesStatus;
-  });
+  const groupedTransfers = [...transfers]
+    .sort((a, b) => parseDateScore(b.date) - parseDateScore(a.date))
+    .reduce<{ date: string; transfers: StockTransfer[] }[]>((groups, transfer) => {
+      const last = groups.at(-1);
+      if (last?.date === transfer.date) last.transfers.push(transfer);
+      else groups.push({ date: transfer.date, transfers: [transfer] });
+      return groups;
+    }, []);
+  const formatGroupDate = (date: string) => {
+    const score = parseDateScore(date);
+    return Number.isFinite(score) && score > 0
+      ? new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(new Date(score))
+      : date;
+  };
 
   const handleStatusChange = (transferId: string, nextStatus: TransferStatus) => {
     try {
@@ -153,17 +156,8 @@ export function TransfersView({ companyId }: { companyId: string }) {
 
       <Card>
         <CardHeader className="flex flex-col gap-4 border-b sm:flex-row sm:items-center sm:justify-between">
-          <div><CardTitle>Inter-Site Stock Transfers</CardTitle><CardDescription>Track the exact product and serialized units moving between outlets and warehouses. Change transfer status as stock progresses.</CardDescription></div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative w-full sm:w-60"><Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Search transfers" placeholder="Search transfer or product" className="pl-8 text-xs" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
-            <select aria-label="Filter transfer status" className="h-9 rounded-md border border-input bg-background px-3 text-xs text-heading" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="all">All statuses</option>
-              <option value="preparing">Preparing</option>
-              <option value="shipped">Shipped</option>
-              <option value="received">Received</option>
-            </select>
-            <Button size="sm" onClick={() => setShowModal(true)}><Plus className="size-4" />Initiate Transfer</Button>
-          </div>
+          <div><CardTitle>Inter-Site Stock Transfers</CardTitle><CardDescription>Track the exact product and serialized units moving between outlets and warehouses. Latest transfers appear first, grouped by date.</CardDescription></div>
+          <Button size="sm" className="shrink-0" onClick={() => setShowModal(true)}><Plus className="size-4" />Initiate Transfer</Button>
         </CardHeader>
         <CardContent className="p-0">
           {notice ? (
@@ -172,9 +166,15 @@ export function TransfersView({ companyId }: { companyId: string }) {
               <button type="button" onClick={() => setNotice("")} className="text-xs text-muted-foreground hover:text-foreground">Dismiss</button>
             </div>
           ) : null}
+          <div className="space-y-5 p-4 sm:p-5">
+          {groupedTransfers.map((group) => <section key={group.date} aria-label={`Transfers on ${group.date}`} className="overflow-hidden rounded-lg border">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+            <h2 className="font-semibold text-heading">{formatGroupDate(group.date)}</h2>
+            <p className="text-xs text-muted-foreground">{group.transfers.length} {group.transfers.length === 1 ? "transfer" : "transfers"}</p>
+          </header>
           <Table>
-            <TableHeader><TableRow><TableHead>Transfer #</TableHead><TableHead>Product item</TableHead><TableHead>Origin</TableHead><TableHead>Destination</TableHead><TableHead className="text-right">Quantity</TableHead><TableHead className="text-right">Serials</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Next step / Change</TableHead></TableRow></TableHeader>
-            <TableBody>{filtered.length ? filtered.map((transfer) => {
+            <TableHeader><TableRow><TableHead>Transfer #</TableHead><TableHead>Product item</TableHead><TableHead>Origin</TableHead><TableHead>Destination</TableHead><TableHead className="text-right">Quantity</TableHead><TableHead className="text-right">Serials</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Next step / Change</TableHead></TableRow></TableHeader>
+            <TableBody>{group.transfers.map((transfer) => {
               const isPreparing = transfer.status === "Preparing" || transfer.status === "Requested";
               const isShipped = transfer.status === "Shipped" || transfer.status === "In Transit" || transfer.status === "Dispatched";
               const isReceived = transfer.status === "Received";
@@ -186,7 +186,6 @@ export function TransfersView({ companyId }: { companyId: string }) {
                   <TableCell>{transfer.fromSite}</TableCell><TableCell>{transfer.toSite}</TableCell>
                   <TableCell className="text-right font-semibold tabular-nums">{transfer.itemsCount} units</TableCell>
                   <TableCell className="text-right tabular-nums">{transfer.serials.length} recorded</TableCell>
-                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{transfer.date}</TableCell>
                   <TableCell><Badge tone={transferStatusTone(transfer.status)}>{transfer.status}</Badge></TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
@@ -219,8 +218,11 @@ export function TransfersView({ companyId }: { companyId: string }) {
                   </TableCell>
                 </TableRow>
               );
-            }) : <TableRow><TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">No transfers match your search.</TableCell></TableRow>}</TableBody>
+            })}</TableBody>
           </Table>
+          </section>)}
+          {groupedTransfers.length === 0 ? <p className="rounded-lg border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">No transfers yet. Use Initiate Transfer to move stock between locations.</p> : null}
+          </div>
         </CardContent>
       </Card>
 

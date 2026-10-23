@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Menu, ScanBarcode, Search, X } from "lucide-react";
+import { Building2, ChevronDown, Menu, ScanBarcode, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -17,6 +17,7 @@ type AppShellProps = {
 export const AppShell = ({ companyId, children }: AppShellProps) => {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const navigationContent = (
     <>
@@ -32,11 +33,59 @@ export const AppShell = ({ companyId, children }: AppShellProps) => {
           />
         </Link>
       </div>
-      <nav aria-label="Primary" className="flex-1 space-y-1 p-3">
+      <nav aria-label="Primary" className="flex-1 space-y-1 overflow-y-auto p-3">
         {navigation.map((item) => {
           const href = `/c/${companyId}/${item.slug}`;
-          const isActive = pathname.startsWith(href);
+          const isActive = pathname === href || pathname.startsWith(`${href}/`);
           const Icon = item.icon;
+          if (item.children) {
+            const isOpen = expanded[item.slug] ?? isActive;
+            const groupId = `nav-group-${item.slug}`;
+            return (
+              <div key={item.slug}>
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  aria-controls={groupId}
+                  onClick={() => setExpanded((current) => ({ ...current, [item.slug]: !isOpen }))}
+                  className={cn(
+                    "group flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
+                    isActive
+                      ? "text-[#ff802b] font-semibold [&>svg]:text-[#ff802b]"
+                      : "text-white/70 hover:bg-white/8 hover:text-white [&>svg]:text-white/70 hover:[&>svg]:text-white",
+                  )}
+                >
+                  <Icon aria-hidden="true" className="size-[1.05rem]" strokeWidth={isActive ? 2.2 : 1.8} />
+                  <span className="flex-1">{item.label}</span>
+                  <ChevronDown aria-hidden="true" className={cn("size-4 transition-transform", isOpen && "rotate-180")} />
+                </button>
+                {isOpen ? (
+                  <div id={groupId} className="ml-[1.35rem] mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
+                    {item.children.map((child) => {
+                      const childHref = `/c/${companyId}/${child.slug}`;
+                      const isChildActive = pathname === childHref || pathname.startsWith(`${childHref}/`);
+                      return (
+                        <Link
+                          key={child.slug}
+                          href={childHref}
+                          aria-current={isChildActive ? "page" : undefined}
+                          onClick={() => setIsMenuOpen(false)}
+                          className={cn(
+                            "flex min-h-9 items-center rounded-md px-3 py-1.5 text-sm transition-colors",
+                            isChildActive
+                              ? "bg-[#ea580c]/15 font-semibold text-[#ff802b] shadow-[inset_3px_0_0_#ea580c]"
+                              : "text-white/60 hover:bg-white/8 hover:text-white",
+                          )}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          }
           return (
             <Link
               key={item.slug}

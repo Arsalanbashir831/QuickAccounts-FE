@@ -10,10 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useInvoices } from "@/features/sales/invoice-store";
-import { buildStockBalances, type ReservationType } from "../stock-data";
+import { buildStockBalances } from "../stock-data";
 import { useTransfers } from "../transfer-store";
 
-const reservationTone = (type: ReservationType) => type === "Transfer shipment" || type === "Unshipped invoice" ? "info" : type === "Warranty replacement" ? "warning" : "danger";
 
 export function StockLocationDetails({ companyId, sku, locationId }: { companyId: string; sku: string; locationId: string }) {
   const router = useRouter();
@@ -53,13 +52,12 @@ export function StockLocationDetails({ companyId, sku, locationId }: { companyId
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="border-b"><CardTitle>Reservations at this location</CardTitle><CardDescription>Select a row to view its transfer, invoice, or RMA commitment.</CardDescription></CardHeader>
-        <CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Reference</TableHead><TableHead>Customer / destination</TableHead><TableHead className="text-right">Units</TableHead><TableHead>Stock ownership</TableHead></TableRow></TableHeader><TableBody>{row.reservations.length ? row.reservations.map((reservation) => {
+        <CardHeader className="border-b"><CardTitle>Reservations at this location</CardTitle><CardDescription>Select a row to view its transfer or invoice commitment.</CardDescription></CardHeader>
+        <CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Reference</TableHead><TableHead>Customer / destination</TableHead><TableHead className="text-right">Units</TableHead></TableRow></TableHeader><TableBody>{row.reservations.length ? row.reservations.map((reservation) => {
           const href = `${productHref}/reservations/${encodeURIComponent(reservation.id)}`;
-          return <TableRow key={reservation.id} role="link" tabIndex={0} aria-label={`View ${reservation.type} reservation ${reservation.reference}`} className="cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary hover:bg-primary/5" onClick={(event) => handleRowClick(event, href)} onKeyDown={(event) => handleRowKeyDown(event, href)}><TableCell><Badge tone={reservationTone(reservation.type)}>{reservation.type}</Badge></TableCell><TableCell className="font-mono font-bold text-primary">{reservation.reference}</TableCell><TableCell>{reservation.destination ?? reservation.customer}</TableCell><TableCell className="text-right tabular-nums">{reservation.quantity}</TableCell><TableCell className="text-muted-foreground">{reservation.consumesSellableStock ? "Company stock" : "Customer-held"}</TableCell></TableRow>;
-        }) : <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">No units are reserved at this location.</TableCell></TableRow>}</TableBody></Table></CardContent>
+          return <TableRow key={reservation.id} role="link" tabIndex={0} aria-label={`View ${reservation.type} reservation ${reservation.reference}`} className="cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary hover:bg-primary/5" onClick={(event) => handleRowClick(event, href)} onKeyDown={(event) => handleRowKeyDown(event, href)}><TableCell><Badge tone={"info"}>{reservation.type}</Badge></TableCell><TableCell className="font-mono font-bold text-primary">{reservation.reference}</TableCell><TableCell>{reservation.destination ?? reservation.customer}</TableCell><TableCell className="text-right tabular-nums">{reservation.quantity}</TableCell></TableRow>;
+        }) : <TableRow><TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">No units are reserved at this location.</TableCell></TableRow>}</TableBody></Table></CardContent>
       </Card>
-      {row.reservations.some((reservation) => !reservation.consumesSellableStock) ? <p className="text-xs text-muted-foreground">Customer-held rejected warranty returns are awaiting shipment but are not part of sellable company stock.</p> : null}
     </div>
   );
 }

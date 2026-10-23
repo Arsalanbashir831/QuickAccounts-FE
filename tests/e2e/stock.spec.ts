@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("opens stock details across locations from the stock sheet", async ({ page }) => {
-  await page.goto("/c/demo/stock?view=stock");
+  await page.goto("/c/demo/stock/products");
   await expect(page.getByRole("heading", { name: "Stock Sheet" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Reserved for Shipment" })).toBeVisible();
   await page.getByRole("link", { name: "View stock details for Redmi Note 13 Pro (12/512GB) at Main Outlet" }).click();
@@ -13,16 +13,6 @@ test("opens stock details across locations from the stock sheet", async ({ page 
   await page.getByRole("link", { name: "Back to product stock" }).click();
   await page.getByRole("link", { name: "View Main Warehouse stock details" }).click();
   await expect(page).toHaveURL(/\/c\/demo\/stock\/XIA-RN13-BLU\/locations\/xia-warehouse$/);
-});
-
-test("opens RMA replacement and rejected-return reservation details", async ({ page }) => {
-  await page.goto("/c/demo/stock/SAM-A55-BLK");
-  await page.getByRole("link", { name: "View Warranty replacement reservation RMA-0082" }).click();
-  await expect(page.getByRole("heading", { name: "RMA-0082" })).toBeVisible();
-  await expect(page.getByText("Approved · Replacement issued")).toBeVisible();
-  await page.goto("/c/demo/stock/XIA-RN13-BLU");
-  await page.getByRole("link", { name: "View Rejected warranty return reservation RMA-0080" }).click();
-  await expect(page.getByText("Customer-held return")).toBeVisible();
 });
 
 test("opens transfer shipment reservation and source transfer with serialized units", async ({ page }) => {
