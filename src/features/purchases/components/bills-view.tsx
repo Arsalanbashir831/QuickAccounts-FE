@@ -114,15 +114,15 @@ export const BillsView = () => {
                 <TableCell className="text-xs text-muted-foreground">{bill.date}</TableCell>
                 <TableCell className="text-xs font-semibold text-heading">{bill.dueDate}</TableCell>
                 <TableCell className="text-right font-mono font-bold text-heading">
-                  PKR {bill.amount.toLocaleString()}
+                  ${bill.amount.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right font-mono text-xs">
                   {bill.balance > 0 ? (
                     <span className="font-bold text-destructive">
-                      PKR {bill.balance.toLocaleString()}
+                      ${bill.balance.toLocaleString()}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">PKR 0</span>
+                    <span className="text-muted-foreground">$0</span>
                   )}
                 </TableCell>
                 <TableCell className="text-center">

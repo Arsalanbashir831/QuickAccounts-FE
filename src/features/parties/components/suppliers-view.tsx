@@ -103,9 +103,9 @@ export const SuppliersView = ({ companyId }: { companyId: string }) => {
                 <TableCell className="text-xs font-semibold text-heading">{s.paymentTerms}</TableCell>
                 <TableCell className="text-right font-mono font-bold text-heading">
                   {s.balanceOwed > 0 ? (
-                    <span className="text-destructive">- PKR {s.balanceOwed.toLocaleString()}</span>
+                    <span className="text-destructive">- ${s.balanceOwed.toLocaleString()}</span>
                   ) : (
-                    <span className="text-muted-foreground">PKR 0</span>
+                    <span className="text-muted-foreground">$0</span>
                   )}
                 </TableCell>
                 <TableCell className="text-center font-mono font-bold">{s.activeOrders}</TableCell>

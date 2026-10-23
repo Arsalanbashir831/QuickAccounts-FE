@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useInvoices, type InvoiceRecord } from "../invoice-store";
 
-const money = (amount: number) => `PKR ${amount.toLocaleString("en-PK")}`;
+const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 const statusTone = (status: InvoiceRecord["status"]) => status === "Paid" ? "success" : status === "Partial" ? "warning" : status === "Overdue" ? "danger" : "neutral";
 
 export function InvoicesView({ companyId }: { companyId: string }) {

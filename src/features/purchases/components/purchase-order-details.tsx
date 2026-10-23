@@ -11,7 +11,7 @@ import { addSerialCodes, pasteSerialCodes } from "@/features/sales/components/se
 import { usePurchaseOrders, writePurchaseOrders, type PurchaseOrder } from "../purchase-store";
 import { PurchasePrintTemplate } from "./purchase-print-template";
 
-const money = (amount: number) => `PKR ${amount.toLocaleString("en-PK")}`;
+const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 const subscribeToNothing = () => () => {};
 
 export function PurchaseOrderDetails({ companyId, orderId }: { companyId: string; orderId: string }) {

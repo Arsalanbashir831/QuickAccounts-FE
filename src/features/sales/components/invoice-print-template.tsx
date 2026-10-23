@@ -44,7 +44,7 @@ const paymentLabels: Record<PrintableInvoice["paymentMethod"], string> = {
   credit: "Store Credit",
 };
 
-const money = (amount: number) => `PKR ${amount.toLocaleString("en-PK")}`;
+const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({
   "&": "&amp;",

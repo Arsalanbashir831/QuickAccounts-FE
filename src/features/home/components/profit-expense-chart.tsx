@@ -57,9 +57,9 @@ export const ProfitExpenseChart = () => {
   const barWidth = Math.min(Math.max(groupWidth * 0.28, 8), 18);
   const barGap = 4;
 
-  const formatPKR = (amount: number) => `PKR ${(amount / 1000).toFixed(0)}k`;
-  const formatFullPKR = (amount: number) =>
-    `PKR ${amount.toLocaleString("en-PK")}`;
+  const formatUSD = (amount: number) => `$${(amount / 1000).toFixed(0)}k`;
+  const formatFullUSD = (amount: number) =>
+    `$${amount.toLocaleString("en-US")}`;
 
   const hoveredItem = hoveredIndex !== null ? data[hoveredIndex] : null;
 
@@ -128,7 +128,7 @@ export const ProfitExpenseChart = () => {
               Period Profit
             </p>
             <p className="numeric mt-0.5 text-base font-bold text-primary sm:text-lg">
-              {formatFullPKR(totalProfit)}
+              {formatFullUSD(totalProfit)}
             </p>
           </div>
           <div>
@@ -136,7 +136,7 @@ export const ProfitExpenseChart = () => {
               Period Expenses
             </p>
             <p className="numeric mt-0.5 text-base font-bold text-heading sm:text-lg">
-              {formatFullPKR(totalExpense)}
+              {formatFullUSD(totalExpense)}
             </p>
           </div>
           <div>
@@ -155,13 +155,13 @@ export const ProfitExpenseChart = () => {
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-bold text-heading">{hoveredItem.month}:</span>
               <span className="font-semibold text-primary">
-                Profit: {formatFullPKR(hoveredItem.profit)}
+                Profit: {formatFullUSD(hoveredItem.profit)}
               </span>
               <span className="font-semibold text-zinc-700">
-                Expense: {formatFullPKR(hoveredItem.expense)}
+                Expense: {formatFullUSD(hoveredItem.expense)}
               </span>
               <span className="font-semibold text-success">
-                Net: {formatFullPKR(hoveredItem.profit - hoveredItem.expense)}
+                Net: {formatFullUSD(hoveredItem.profit - hoveredItem.expense)}
               </span>
             </div>
           ) : (
@@ -201,7 +201,7 @@ export const ProfitExpenseChart = () => {
                     textAnchor="end"
                     className="fill-muted-foreground text-[10.5px] font-medium"
                   >
-                    {formatPKR(labelVal)}
+                    {formatUSD(labelVal)}
                   </text>
                 </g>
               );

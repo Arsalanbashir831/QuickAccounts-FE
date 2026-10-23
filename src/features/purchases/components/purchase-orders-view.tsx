@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePurchaseOrders, type PurchaseOrder } from "../purchase-store";
 
-const money = (amount: number) => `PKR ${amount.toLocaleString("en-PK")}`;
+const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 
 export function PurchaseOrdersView({ companyId }: { companyId: string }) {
   const router = useRouter();

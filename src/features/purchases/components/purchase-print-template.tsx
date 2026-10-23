@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { PurchaseOrder } from "../purchase-store";
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
-const money = (amount: number) => `PKR ${amount.toLocaleString("en-PK")}`;
+const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 const paymentLabel = { cash: "Cash", bank: "Card / Bank", credit: "Supplier Credit" } as const;
 
 function buildPrintDocument(order: PurchaseOrder) {

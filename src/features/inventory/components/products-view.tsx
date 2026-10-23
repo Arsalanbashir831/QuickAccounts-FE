@@ -163,10 +163,10 @@ export const ProductsView = () => {
                   <TableCell className="font-semibold text-heading">{prod.name}</TableCell>
                   <TableCell className="text-xs">{prod.category}</TableCell>
                   <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                    PKR {prod.costPrice.toLocaleString()}
+                    ${prod.costPrice.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right font-mono font-bold text-heading">
-                    PKR {prod.salePrice.toLocaleString()}
+                    ${prod.salePrice.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge tone={prod.tracking === "Serialized" ? "info" : "neutral"}>
@@ -205,8 +205,8 @@ export const ProductsView = () => {
             <section className="space-y-4 border-t pt-6" aria-labelledby="product-pricing-heading">
               <div><h3 id="product-pricing-heading" className="text-sm font-semibold text-heading">Pricing</h3><p className="mt-1 text-sm text-muted-foreground">Default prices can be adjusted when creating a transaction.</p></div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-2 text-sm font-medium text-heading">Cost price <span className="font-normal text-muted-foreground">(PKR)</span><Input type="number" value={costPrice} onChange={(event) => setCostPrice(Number(event.target.value) || 0)} className="h-11 text-base tabular-nums" /></label>
-                <label className="block space-y-2 text-sm font-medium text-heading">Selling price <span className="font-normal text-muted-foreground">(PKR)</span><Input type="number" value={salePrice} onChange={(event) => setSalePrice(Number(event.target.value) || 0)} className="h-11 text-base font-semibold tabular-nums text-primary" /></label>
+                <label className="block space-y-2 text-sm font-medium text-heading">Cost price <span className="font-normal text-muted-foreground">(USD)</span><Input type="number" value={costPrice} onChange={(event) => setCostPrice(Number(event.target.value) || 0)} className="h-11 text-base tabular-nums" /></label>
+                <label className="block space-y-2 text-sm font-medium text-heading">Selling price <span className="font-normal text-muted-foreground">(USD)</span><Input type="number" value={salePrice} onChange={(event) => setSalePrice(Number(event.target.value) || 0)} className="h-11 text-base font-semibold tabular-nums text-primary" /></label>
               </div>
             </section>
             </div>

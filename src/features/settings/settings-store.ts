@@ -23,7 +23,7 @@ export interface CompanySettings {
     email: string;
     address: string;
     logoDataUrl?: string;
-    currency: "PKR";
+    currency: "USD";
     timeZone: "Asia/Karachi";
     dateFormat: "dd MMM yyyy" | "dd/MM/yyyy" | "yyyy-MM-dd";
   };
@@ -50,7 +50,7 @@ export const defaultCompanySettings: CompanySettings = {
     phone: "",
     email: "",
     address: "",
-    currency: "PKR",
+    currency: "USD",
     timeZone: "Asia/Karachi",
     dateFormat: "dd MMM yyyy",
   },
@@ -103,7 +103,7 @@ export function readCompanySettings(companyId: string): CompanySettings {
   if (raw) {
     try {
       const parsed: unknown = JSON.parse(raw);
-      if (isCompanySettings(parsed)) settings = parsed;
+      if (isCompanySettings(parsed)) settings = { ...parsed, business: { ...parsed.business, currency: "USD" } };
     } catch { /* Use the demo defaults when saved browser settings are malformed. */ }
   }
   cache.set(companyId, { raw, settings });

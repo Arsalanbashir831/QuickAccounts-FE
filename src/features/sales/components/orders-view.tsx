@@ -119,7 +119,7 @@ export const OrdersView = () => {
                 <TableCell className="text-xs text-muted-foreground">{order.date}</TableCell>
                 <TableCell className="text-xs font-semibold">{order.itemsCount} units</TableCell>
                 <TableCell className="text-right font-mono font-bold text-heading">
-                  PKR {order.total.toLocaleString()}
+                  ${order.total.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge

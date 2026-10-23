@@ -12,29 +12,29 @@ type LedgerKind = "customer" | "vendor";
 interface PartyRecord { name: string; code: string; city: string; balanceLabel: string; balance: number; total: string; status: string }
 
 const customerRecords: Record<string, PartyRecord> = {
-  "cust-1": { name: "Apex Mobiles (Kashif)", code: "CUS-0001", city: "Lahore", balanceLabel: "Balance Due", balance: 184500, total: "PKR 3,840,000", status: "Active" },
-  "cust-2": { name: "Hamza Electronics", code: "CUS-0002", city: "Rawalpindi", balanceLabel: "Balance Due", balance: 46750, total: "PKR 1,920,000", status: "Active" },
-  "cust-3": { name: "City Devices", code: "CUS-0003", city: "Islamabad", balanceLabel: "Balance Due", balance: 28900, total: "PKR 780,000", status: "Credit Hold" },
-  "cust-4": { name: "Tariq Telecom", code: "CUS-0004", city: "Lahore", balanceLabel: "Balance Due", balance: 0, total: "PKR 5,610,000", status: "Active" },
+  "cust-1": { name: "Apex Mobiles (Kashif)", code: "CUS-0001", city: "Lahore", balanceLabel: "Balance Due", balance: 184500, total: "$3,840,000", status: "Active" },
+  "cust-2": { name: "Hamza Electronics", code: "CUS-0002", city: "Rawalpindi", balanceLabel: "Balance Due", balance: 46750, total: "$1,920,000", status: "Active" },
+  "cust-3": { name: "City Devices", code: "CUS-0003", city: "Islamabad", balanceLabel: "Balance Due", balance: 28900, total: "$780,000", status: "Credit Hold" },
+  "cust-4": { name: "Tariq Telecom", code: "CUS-0004", city: "Lahore", balanceLabel: "Balance Due", balance: 0, total: "$5,610,000", status: "Active" },
 };
 
 const vendorRecords: Record<string, PartyRecord> = {
-  "sup-1": { name: "Mumtaz Distributors", code: "VEN-0001", city: "Karachi", balanceLabel: "Balance Owed", balance: 1420000, total: "PKR 8,960,000", status: "Open" },
-  "sup-2": { name: "Apex Importers", code: "VEN-0002", city: "Lahore", balanceLabel: "Balance Owed", balance: 290000, total: "PKR 4,280,000", status: "Open" },
-  "sup-3": { name: "TechWorld Distribution", code: "VEN-0003", city: "Dubai / Karachi", balanceLabel: "Balance Owed", balance: 0, total: "PKR 2,140,000", status: "Settled" },
+  "sup-1": { name: "Mumtaz Distributors", code: "VEN-0001", city: "Karachi", balanceLabel: "Balance Owed", balance: 1420000, total: "$8,960,000", status: "Open" },
+  "sup-2": { name: "Apex Importers", code: "VEN-0002", city: "Lahore", balanceLabel: "Balance Owed", balance: 290000, total: "$4,280,000", status: "Open" },
+  "sup-3": { name: "TechWorld Distribution", code: "VEN-0003", city: "Dubai / Karachi", balanceLabel: "Balance Owed", balance: 0, total: "$2,140,000", status: "Settled" },
 };
 
 const ledgerRows = {
-  customer: [["02 Oct 2026", "INV-10482", "Invoice", "PKR 89,999", "Debit", "Open"], ["25 Sep 2026", "PAY-0088", "Payment received", "PKR 150,000", "Credit", "Posted"], ["14 Sep 2026", "INV-10412", "Invoice", "PKR 74,999", "Debit", "Open"]],
-  vendor: [["06 Oct 2026", "PINV-2088", "Purchase invoice", "PKR 425,000", "Credit", "Open"], ["28 Sep 2026", "PAY-0042", "Payment made", "PKR 300,000", "Debit", "Posted"], ["18 Sep 2026", "PINV-2044", "Purchase invoice", "PKR 180,000", "Credit", "Open"]],
+  customer: [["02 Oct 2026", "INV-10482", "Invoice", "$89,999", "Debit", "Open"], ["25 Sep 2026", "PAY-0088", "Payment received", "$150,000", "Credit", "Posted"], ["14 Sep 2026", "INV-10412", "Invoice", "$74,999", "Debit", "Open"]],
+  vendor: [["06 Oct 2026", "PINV-2088", "Purchase invoice", "$425,000", "Credit", "Open"], ["28 Sep 2026", "PAY-0042", "Payment made", "$300,000", "Debit", "Posted"], ["18 Sep 2026", "PINV-2044", "Purchase invoice", "$180,000", "Credit", "Open"]],
 } as const;
 
 export const PartyLedgerDetail = ({ companyId, kind, partyId }: { companyId: string; kind: LedgerKind; partyId: string }) => {
   const records = kind === "customer" ? customerRecords : vendorRecords;
   const record = records[partyId] ?? records[kind === "customer" ? "cust-1" : "sup-1"];
   const sourceRows = ledgerRows[kind];
-  const formatLedgerAmount = (value: number) => value === 0 ? "—" : `PKR ${Math.abs(value).toLocaleString()}`;
-  const formatLedgerBalance = (value: number) => value === 0 ? "PKR 0" : `${(value > 0) === (kind === "customer") ? "+" : "-"} PKR ${Math.abs(value).toLocaleString()}`;
+  const formatLedgerAmount = (value: number) => value === 0 ? "—" : `$${Math.abs(value).toLocaleString()}`;
+  const formatLedgerBalance = (value: number) => value === 0 ? "$0" : `${(value > 0) === (kind === "customer") ? "+" : "-"} $${Math.abs(value).toLocaleString()}`;
   const balanceClass = (value: number) => value === 0 ? "text-muted-foreground" : (value > 0) === (kind === "customer") ? "text-success-foreground" : "text-destructive";
   const allRows = Array.from({ length: 36 }, (_, index) => index).reduce((acc, index) => {
     const source = sourceRows[index % sourceRows.length];
@@ -58,7 +58,7 @@ export const PartyLedgerDetail = ({ companyId, kind, partyId }: { companyId: str
   const totalDebit = allRows.reduce((sum, row) => sum + parseAmount(row.debit), 0);
   const totalCredit = allRows.reduce((sum, row) => sum + parseAmount(row.credit), 0);
   const totalRemainingBalance = kind === "customer" ? totalDebit - totalCredit : totalCredit - totalDebit;
-  const formatAmount = (value: number) => `${value === 0 ? "" : (value > 0) === (kind === "customer") ? "+ " : "- "}PKR ${Math.abs(value).toLocaleString()}`;
+  const formatAmount = (value: number) => `${value === 0 ? "" : (value > 0) === (kind === "customer") ? "+ " : "- "}$${Math.abs(value).toLocaleString()}`;
   const title = kind === "customer" ? "Customer Ledger" : "Vendor Ledger";
 
   return <div className="workspace-enter space-y-5">

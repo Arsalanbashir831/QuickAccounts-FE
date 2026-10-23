@@ -160,13 +160,13 @@ export const CustomersView = ({ companyId }: { companyId: string }) => {
                   <TableCell className="text-xs text-muted-foreground">{c.city}</TableCell>
                   <TableCell className="text-center font-mono text-xs">{c.totalOrders}</TableCell>
                   <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                    PKR {c.totalSpent.toLocaleString()}
+                    ${c.totalSpent.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right font-mono font-bold text-heading">
                     {c.balanceDue > 0 ? (
-                      <span className="text-success-foreground">+ PKR {c.balanceDue.toLocaleString()}</span>
+                      <span className="text-success-foreground">+ ${c.balanceDue.toLocaleString()}</span>
                     ) : (
-                      <span className="text-success">PKR 0</span>
+                      <span className="text-success">$0</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs">

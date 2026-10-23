@@ -28,14 +28,14 @@ interface RmaSlip {
 }
 
 const customerClaims: RmaSlip[] = [
-  { id: "customer-rma-0082", slipNumber: "RMA-0082", product: "Samsung Galaxy A55 5G", receivedSerialNumber: "358291048291048", replacementSerialNumber: "358291048299814", invoiceNumber: "INV-10482", price: "Rs. 89,999", receivingDate: "08 Oct 2026", partyName: "Apex Mobiles", warrantyVerification: "Accepted", status: "Replaced" },
-  { id: "customer-rma-0081", slipNumber: "RMA-0081", product: "Baseus Bowie H1 Headphones", receivedSerialNumber: "BS-H1-9921", invoiceNumber: "INV-10461", price: "Rs. 12,500", receivingDate: "07 Oct 2026", partyName: "Walk-in Customer", warrantyVerification: "Accepted", status: "Pending" },
-  { id: "customer-rma-0080", slipNumber: "RMA-0080", product: "Redmi Note 13 Pro", receivedSerialNumber: "861928374659202", invoiceNumber: "INV-10412", price: "Rs. 74,999", receivingDate: "03 Oct 2026", partyName: "Hamza Electronics", warrantyVerification: "Rejected", status: "Bill Back" },
+  { id: "customer-rma-0082", slipNumber: "RMA-0082", product: "Samsung Galaxy A55 5G", receivedSerialNumber: "358291048291048", replacementSerialNumber: "358291048299814", invoiceNumber: "INV-10482", price: "$89,999", receivingDate: "08 Oct 2026", partyName: "Apex Mobiles", warrantyVerification: "Accepted", status: "Replaced" },
+  { id: "customer-rma-0081", slipNumber: "RMA-0081", product: "Baseus Bowie H1 Headphones", receivedSerialNumber: "BS-H1-9921", invoiceNumber: "INV-10461", price: "$12,500", receivingDate: "07 Oct 2026", partyName: "Walk-in Customer", warrantyVerification: "Accepted", status: "Pending" },
+  { id: "customer-rma-0080", slipNumber: "RMA-0080", product: "Redmi Note 13 Pro", receivedSerialNumber: "861928374659202", invoiceNumber: "INV-10412", price: "$74,999", receivingDate: "03 Oct 2026", partyName: "Hamza Electronics", warrantyVerification: "Rejected", status: "Bill Back" },
 ];
 
 const supplierClaims: RmaSlip[] = [
-  { id: "supplier-rma-0038", slipNumber: "RMA-0038", product: "Anker 65W GaN Charger", receivedSerialNumber: "ANK-65-44821", invoiceNumber: "PINV-2088", price: "Rs. 9,800", receivingDate: "06 Oct 2026", partyName: "Mumtaz Distributors", warrantyVerification: "Accepted", status: "Pending" },
-  { id: "supplier-rma-0037", slipNumber: "RMA-0037", product: "Logitech MX Master 3S", receivedSerialNumber: "LGT-MX3-0192", invoiceNumber: "PINV-2071", price: "Rs. 24,500", receivingDate: "01 Oct 2026", partyName: "Apex Importers", warrantyVerification: "Accepted", status: "Bill Back" },
+  { id: "supplier-rma-0038", slipNumber: "RMA-0038", product: "Anker 65W GaN Charger", receivedSerialNumber: "ANK-65-44821", invoiceNumber: "PINV-2088", price: "$9,800", receivingDate: "06 Oct 2026", partyName: "Mumtaz Distributors", warrantyVerification: "Accepted", status: "Pending" },
+  { id: "supplier-rma-0037", slipNumber: "RMA-0037", product: "Logitech MX Master 3S", receivedSerialNumber: "LGT-MX3-0192", invoiceNumber: "PINV-2071", price: "$24,500", receivingDate: "01 Oct 2026", partyName: "Apex Importers", warrantyVerification: "Accepted", status: "Bill Back" },
 ];
 
 const statusTone = (status: ClaimStatus) => status === "Replaced" ? "success" as const : status === "Bill Back" ? "info" as const : "warning" as const;

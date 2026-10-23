@@ -19,7 +19,7 @@ import { QuickActions } from "./components/quick-actions";
 const statMetrics = [
   {
     label: "Today's Sales",
-    value: "PKR 482,600",
+    value: "$482,600",
     note: "18 confirmed invoices",
     badge: "+12.4%",
     badgeTone: "success" as const,
@@ -28,7 +28,7 @@ const statMetrics = [
   },
   {
     label: "Pending to Receive",
-    value: "PKR 345,000",
+    value: "$345,000",
     note: "7 customer invoices due",
     badge: "4 due today",
     badgeTone: "warning" as const,
@@ -37,7 +37,7 @@ const statMetrics = [
   },
   {
     label: "Pending to Send",
-    value: "PKR 182,500",
+    value: "$182,500",
     note: "5 supplier bills awaiting pay",
     badge: "2 urgent",
     badgeTone: "danger" as const,
@@ -46,7 +46,7 @@ const statMetrics = [
   },
   {
     label: "Net Cash Position",
-    value: "PKR 1,420,800",
+    value: "$1,420,800",
     note: "Bank accounts & cash drawers",
     badge: "Liquidity OK",
     badgeTone: "neutral" as const,
@@ -64,7 +64,7 @@ const priorityTasks = [
   },
   {
     title: "Review price exception",
-    detail: "Invoice DOT-1045 · PKR 28,900",
+    detail: "Invoice DOT-1045 · $28,900",
     kind: "Approval",
     href: "sales?view=invoices",
   },
@@ -185,19 +185,19 @@ export const HomeWorkspace = ({ companyId }: { companyId: string }) => (
             <CardContent className="space-y-3 text-xs">
               <div className="flex items-center justify-between border-b pb-2">
                 <span className="text-muted-foreground">Cash drawer balance</span>
-                <span className="font-semibold text-heading">PKR 94,500</span>
+                <span className="font-semibold text-heading">$94,500</span>
               </div>
               <div className="flex items-center justify-between border-b pb-2">
                 <span className="text-muted-foreground">Bank / Card collections</span>
-                <span className="font-semibold text-heading">PKR 388,100</span>
+                <span className="font-semibold text-heading">$388,100</span>
               </div>
               <div className="flex items-center justify-between border-b pb-2">
                 <span className="text-muted-foreground">Customer returns processed</span>
-                <span className="font-semibold text-heading">PKR 12,000</span>
+                <span className="font-semibold text-heading">$12,000</span>
               </div>
               <div className="flex items-center justify-between pt-1">
                 <span className="font-bold text-heading">Gross Sales (Total)</span>
-                <span className="font-bold text-primary">PKR 482,600</span>
+                <span className="font-bold text-primary">$482,600</span>
               </div>
 
               <div className="pt-3">

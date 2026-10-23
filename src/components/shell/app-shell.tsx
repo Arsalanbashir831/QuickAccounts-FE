@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Menu, Search, X } from "lucide-react";
+import { Building2, Menu, ScanBarcode, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -109,6 +109,12 @@ export const AppShell = ({ companyId, children }: AppShellProps) => {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Badge className="hidden sm:inline-flex" tone="warning">Demo data</Badge>
+            <Button asChild size="sm" className="gap-1.5 font-semibold shadow-[0_6px_18px_rgb(234_88_12/0.28)]">
+              <Link href={`/c/${companyId}/pos`}>
+                <ScanBarcode aria-hidden="true" className="size-4" />
+                <span className="hidden md:inline">POS Terminal</span>
+              </Link>
+            </Button>
             <Button aria-label="Open global lookup" size="icon" variant="ghost">
               <Search className="size-[1.1rem]" />
             </Button>
