@@ -48,6 +48,8 @@ export const stockLocations: StockLocationBalance[] = [
   { id: "apl-warehouse", sku: "APL-20W-ORIG", name: "Apple 20W USB-C Power Adapter", category: "Accessories", location: "Main Warehouse", onHand: 12, faulty: 0, dead: 0 },
   { id: "bas-outlet", sku: "BAS-H1-GRY", name: "Baseus Bowie H1 ANC Headphones", category: "Audio", location: "Main Outlet", onHand: 2, faulty: 1, dead: 0 },
   { id: "bas-warehouse", sku: "BAS-H1-GRY", name: "Baseus Bowie H1 ANC Headphones", category: "Audio", location: "Main Warehouse", onHand: 4, faulty: 0, dead: 1 },
+  { id: "sam-north", sku: "SAM-A55-BLK", name: "Samsung Galaxy A55 5G (8/256GB)", category: "Smartphones", location: "North Outlet", onHand: 6, faulty: 0, dead: 0 },
+  { id: "ank-north", sku: "ANK-65W-WHT", name: "Anker 65W GaN Fast Charger", category: "Accessories", location: "North Outlet", onHand: 12, faulty: 0, dead: 0 },
 ];
 
 const legacySkuByName: Record<string, string> = {

@@ -1,17 +1,45 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, KeyRound, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, Copy, KeyRound, ShieldCheck } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { demoAccounts, signInDemo } from "./demo-session";
 
 type AccessView = "sign-in" | "register" | "recover";
 
 export const AccessWorkspace = () => {
+  const router = useRouter();
   const [view, setView] = useState<AccessView>("sign-in");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+
+  const handleCopyEmail = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedEmail(address);
+    } catch {
+      toast.error("Could not copy the email address.");
+    }
+  };
+
+  const handleSignIn = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const account = signInDemo(email, password);
+    if (!account) {
+      setError("Use one of the demo accounts and the password shown below.");
+      return;
+    }
+    setError("");
+    const next = new URLSearchParams(window.location.search).get("next");
+    router.replace(next?.startsWith("/c/demo-company/") ? next : "/c/demo-company/home");
+  };
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[minmax(0,1.08fr)_minmax(28rem,0.92fr)]">
@@ -29,7 +57,7 @@ export const AccessWorkspace = () => {
         </div>
         <div className="relative max-w-xl">
           <Badge className="mb-6 bg-white/10 text-white/75">Foundation preview</Badge>
-          <h1 className="max-w-[13ch] text-5xl font-semibold leading-[1.02]  tracking-[-0.055em] xl:text-6xl  ">
+          <h1 className="max-w-[13ch] text-5xl font-semibold leading-[1.02] tracking-[-0.055em] text-white xl:text-6xl">
             Every sale, unit and payment stays connected.
           </h1>
           <p className="mt-6 max-w-[52ch] text-base leading-7 text-white/64">
@@ -61,19 +89,29 @@ export const AccessWorkspace = () => {
               <KeyRound className="mb-5 size-6 text-muted-foreground" strokeWidth={1.7} />
               <h2 className="text-3xl font-semibold tracking-[-0.045em]">Welcome back</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">Sign in to your approved companies and outlets.</p>
-              <form className="mt-8 space-y-5" onSubmit={(event) => event.preventDefault()}>
+              <form className="mt-8 space-y-5" onSubmit={handleSignIn}>
                 <label className="block text-sm font-semibold" htmlFor="email">Email address</label>
-                <Input id="email" type="email" autoComplete="email" placeholder="you@company.com" />
+                <Input id="email" type="email" autoComplete="email" placeholder="owner@dotcode.demo" value={email} onChange={(event) => setEmail(event.target.value)} required />
                 <div className="flex items-end justify-between gap-4">
                   <label className="text-sm font-semibold" htmlFor="password">Password</label>
                   <button className="text-xs font-semibold text-muted-foreground hover:text-foreground" type="button" onClick={() => setView("recover")}>Recover access</button>
                 </div>
-                <Input id="password" type="password" autoComplete="current-password" />
-                <Button className="w-full" type="submit" disabled>Sign in <ArrowRight className="size-4" /></Button>
-                <p className="text-center text-xs leading-5 text-muted-foreground">Sign-in remains disabled until the Django session contract is verified.</p>
+                <Input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+                {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+                <Button className="w-full" type="submit">Sign in <ArrowRight className="size-4" /></Button>
               </form>
-              <div className="my-7 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />UI preview<span className="h-px flex-1 bg-border" /></div>
-              <Button asChild className="w-full" variant="outline"><Link href="/c/demo-company/home">Open demo workspace</Link></Button>
+              <div className="mt-7 rounded-xl border bg-muted/30 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-heading">Demo credentials</p>
+                <p className="mt-1 text-xs text-muted-foreground">Password for every account: <strong>Demo123!</strong></p>
+                <div className="mt-3 space-y-2">
+                  {demoAccounts.map((account) => <div key={account.email} className="flex items-center gap-1 rounded-lg border bg-white p-1 transition-colors hover:border-primary">
+                    <button type="button" aria-label={`Use ${account.email}`} onClick={() => { setEmail(account.email); setPassword("Demo123!"); setError(""); }} className="flex min-h-10 min-w-0 flex-1 items-center justify-between gap-2 rounded-md px-2 text-left text-xs focus-visible:outline-2 focus-visible:outline-primary"><span className="truncate font-semibold text-heading">{account.email}</span><span className="shrink-0 text-muted-foreground">{account.role === "Outlet Manager" ? account.locationId === "main-outlet" ? "Main Outlet" : "North Outlet" : account.role}</span></button>
+                    <button type="button" aria-label={`Copy ${account.email}`} title={`Copy ${account.email}`} onClick={() => void handleCopyEmail(account.email)} className="grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-heading focus-visible:outline-2 focus-visible:outline-primary">{copiedEmail === account.email ? <Check className="size-4 text-success" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}</button>
+                  </div>)}
+                </div>
+                <p className="sr-only" role="status">{copiedEmail ? `${copiedEmail} copied` : ""}</p>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">Demo access is stored in this browser. It does not protect backend data.</p>
               <p className="mt-7 text-center text-sm text-muted-foreground">New business? <button className="font-semibold text-foreground" type="button" onClick={() => setView("register")}>Request access</button></p>
             </>
           ) : null}

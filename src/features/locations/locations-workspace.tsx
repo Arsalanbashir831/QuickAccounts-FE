@@ -26,6 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import {
   deleteLocation,
   useLocations,
@@ -38,7 +39,10 @@ interface LocationsWorkspaceProps {
 }
 
 export function LocationsWorkspace({ companyId }: LocationsWorkspaceProps) {
-  const locations = useLocations(companyId);
+  const allLocations = useLocations(companyId);
+  const session = useDemoSession();
+  const owner = isOwner(session);
+  const locations = owner ? allLocations : allLocations.filter((location) => location.id === session?.locationId);
 
   const [formTarget, setFormTarget] = useState<StockLocation | "new" | null>(null);
   const [filterType, setFilterType] = useState<"ALL" | "Outlet" | "Warehouse">("ALL");
@@ -59,6 +63,7 @@ export function LocationsWorkspace({ companyId }: LocationsWorkspaceProps) {
   });
 
   const handleDelete = (id: string, locationName: string) => {
+    if (!owner) return;
     if (locations.length <= 1) {
       toast.error("You must have at least one active location.");
       setDeletingId(null);
@@ -79,12 +84,12 @@ export function LocationsWorkspace({ companyId }: LocationsWorkspaceProps) {
       <WorkspaceHeader
         eyebrow="Inventory & Fulfillment Hub"
         title="Stores & Warehouses"
-        description="Add, update, and manage retail store outlets and central warehouses. These locations are available across POS sales checkout, purchase receiving, and inventory stock transfers."
+        description={owner ? "Add, update, and manage retail store outlets and central warehouses." : "View and update the details for your assigned outlet."}
         action={
-          <Button onClick={() => setFormTarget("new")}>
+          owner ? <Button onClick={() => setFormTarget("new")}>
             <Plus className="size-4" />
             Add Store / Warehouse
-          </Button>
+          </Button> : undefined
         }
       />
 
@@ -255,7 +260,7 @@ export function LocationsWorkspace({ companyId }: LocationsWorkspaceProps) {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                    {isDeleting ? (
+                    {owner && isDeleting ? (
                       <div className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-2 py-1">
                         <span className="text-xs font-medium text-destructive">
                           Confirm remove?
@@ -288,7 +293,7 @@ export function LocationsWorkspace({ companyId }: LocationsWorkspaceProps) {
                           <Edit2 className="size-3.5" />
                           Edit
                         </Button>
-                        <Button
+                        {owner ? <Button
                           size="sm"
                           variant="ghost"
                           className="h-8 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -297,7 +302,7 @@ export function LocationsWorkspace({ companyId }: LocationsWorkspaceProps) {
                         >
                           <Trash2 className="size-3.5" />
                           <span className="sr-only">Delete</span>
-                        </Button>
+                        </Button> : null}
                       </>
                     )}
                   </div>
@@ -314,7 +319,7 @@ export function LocationsWorkspace({ companyId }: LocationsWorkspaceProps) {
                     ? "Try adjusting your search query or filter"
                     : "Get started by adding your first store or warehouse location"}
                 </p>
-                {!searchQuery && (
+                {owner && !searchQuery && (
                   <Button
                     size="sm"
                     className="mt-4"

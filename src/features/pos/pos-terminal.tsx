@@ -3,12 +3,10 @@
 import {
   ArrowLeft,
   Banknote,
-  BatteryCharging,
-  Cable,
+  Building2,
   CheckCircle2,
   Clock,
   CreditCard,
-  Headphones,
   LayoutGrid,
   Minus,
   Plus,
@@ -16,12 +14,9 @@ import {
   ScanBarcode,
   Search,
   ShoppingCart,
-  Smartphone,
   Store,
   Trash2,
   UserRound,
-  Wallet,
-  Watch,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -32,6 +27,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { readInvoices, writeInvoices, type InvoiceRecord } from "@/features/sales/invoice-store";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { useLocations } from "@/features/settings/location-store";
 import { useCompanySettings } from "@/features/settings/settings-store";
 import { cn } from "@/lib/utils";
@@ -53,20 +49,12 @@ interface CartLine {
   qty: number;
 }
 
-type PaymentMethod = "cash" | "card" | "credit";
-
-const categoryStyles: Record<PosCategory, { icon: LucideIcon; tile: string }> = {
-  Smartphones: { icon: Smartphone, tile: "bg-sky-100 text-sky-700" },
-  Audio: { icon: Headphones, tile: "bg-violet-100 text-violet-700" },
-  Charging: { icon: BatteryCharging, tile: "bg-amber-100 text-amber-700" },
-  Accessories: { icon: Cable, tile: "bg-emerald-100 text-emerald-700" },
-  Wearables: { icon: Watch, tile: "bg-rose-100 text-rose-700" },
-};
+type PaymentMethod = "cash" | "card" | "bank";
 
 const paymentOptions: ReadonlyArray<{ value: PaymentMethod; label: string; icon: LucideIcon }> = [
   { value: "cash", label: "Cash", icon: Banknote },
   { value: "card", label: "Card", icon: CreditCard },
-  { value: "credit", label: "Credit", icon: Wallet },
+  { value: "bank", label: "Bank", icon: Building2 },
 ];
 
 const formatDate = (date: Date, format: "dd MMM yyyy" | "dd/MM/yyyy" | "yyyy-MM-dd") => {
@@ -80,12 +68,14 @@ const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 export const PosTerminal = ({ companyId }: { companyId: string }) => {
   const companySettings = useCompanySettings(companyId);
   const locations = useLocations(companyId);
+  const session = useDemoSession();
+  const owner = !session || isOwner(session);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const outletOptions = useMemo(() => {
-    const outlets = locations.filter((location) => location.type === "Outlet");
-    return outlets.length > 0 ? outlets : locations;
-  }, [locations]);
+    const outlets = locations.filter((location) => location.type === "Outlet" && (owner || location.id === session?.locationId));
+    return outlets.length > 0 ? outlets : owner ? locations : locations.filter((location) => location.id === session?.locationId);
+  }, [locations, owner, session?.locationId]);
 
   const [sellingFrom, setSellingFrom] = useState(() => {
     const preferred = locations.find((location) => location.id === companySettings.rules.defaultSalesLocation);
@@ -101,7 +91,6 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [bankAccount, setBankAccount] = useState<string>(posBankAccounts[0].value);
   const [discountInput, setDiscountInput] = useState("0");
-  const [tenderedInput, setTenderedInput] = useState("");
   const [lastReceipt, setLastReceipt] = useState<PosReceiptData | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [clockLabel, setClockLabel] = useState("");
@@ -121,7 +110,8 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
 
   const cashier = companySettings.team.find((member) => member.role === "Sales / Cashier" && member.status === "Active")?.name ?? "Cashier";
   const cashierInitials = cashier.split(" ").filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
-  const sellingFromName = locations.find((location) => location.id === sellingFrom)?.name ?? "Main Outlet";
+  const activeSellingFrom = owner ? sellingFrom : session?.locationId ?? sellingFrom;
+  const sellingFromName = locations.find((location) => location.id === activeSellingFrom)?.name ?? "Main Outlet";
 
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -145,17 +135,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
   const taxableAmount = Math.max(0, subtotal - discount);
   const tax = Math.round(taxableAmount * (companySettings.rules.taxInclusive ? taxRateFraction / (1 + taxRateFraction) : taxRateFraction));
   const total = Math.max(0, companySettings.rules.taxInclusive ? taxableAmount : taxableAmount + tax);
-  const tendered = Number(tenderedInput || 0);
-  const change = Math.max(0, tendered - total);
-  const isCashShort = paymentMethod === "cash" && tendered < total;
-  const needsCustomerAccount = paymentMethod === "credit" && customer === "Walk-in Customer";
-  const canCharge = cart.length > 0 && !discountInvalid && !isCashShort && !needsCustomerAccount;
-
-  const quickCash = useMemo(() => {
-    if (total <= 0) return [];
-    const roundUp = (step: number) => Math.ceil(total / step) * step;
-    return Array.from(new Set([total, roundUp(500), roundUp(1000), roundUp(5000)])).slice(0, 4);
-  }, [total]);
+  const canCharge = cart.length > 0 && !discountInvalid;
 
   const addProduct = (product: PosProduct) => {
     const available = stocks[product.id] ?? 0;
@@ -184,7 +164,6 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
   const clearSale = () => {
     setCart([]);
     setDiscountInput("0");
-    setTenderedInput("");
     setPaymentMethod("cash");
     setCustomer(posCustomers[0]);
   };
@@ -209,11 +188,11 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
     const reference = `${companySettings.rules.invoicePrefix}-${soldAt.getTime().toString().slice(-8)}`;
     const dateLabel = formatDate(soldAt, companySettings.business.dateFormat);
     const timeLabel = soldAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-    const paymentLabel = paymentMethod === "cash" ? "Cash" : paymentMethod === "card" ? "Card / Bank" : "Store Credit";
-    const selectedBank = paymentMethod === "card"
+    const paymentLabel = paymentMethod === "cash" ? "Cash" : paymentMethod === "card" ? "Card" : "Bank transfer";
+    const selectedBank = paymentMethod === "bank" && owner
       ? posBankAccounts.find((account) => account.value === bankAccount)?.label
       : undefined;
-    const paid = paymentMethod === "credit" ? 0 : total;
+    const paid = total;
 
     const receipt: PosReceiptData = {
       reference,
@@ -230,7 +209,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
       taxInclusive: companySettings.rules.taxInclusive,
       total,
       paid,
-      change: paymentMethod === "cash" ? change : 0,
+      change: 0,
       paymentLabel,
       bankAccount: selectedBank,
       business: companySettings.business,
@@ -244,9 +223,9 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
       outlet: sellingFromName,
       total,
       paid,
-      balance: paymentMethod === "credit" ? total : 0,
-      status: paymentMethod === "credit" ? "Unpaid" : "Paid",
-      paymentMethod: paymentMethod === "card" ? "bank" : paymentMethod,
+      balance: 0,
+      status: "Paid",
+      paymentMethod: paymentMethod === "cash" ? "cash" : "bank",
       bankAccount: selectedBank,
       discount,
       tax,
@@ -275,7 +254,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
 
   return (
     <div
-      className="flex min-h-screen flex-col bg-[#f5f5f6] lg:h-screen lg:overflow-hidden"
+      className="flex min-h-screen flex-col bg-[#f4f5f3] lg:h-screen lg:overflow-hidden"
       onKeyDown={(event) => {
         if (event.key === "F2") {
           event.preventDefault();
@@ -308,7 +287,8 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
           <label htmlFor="pos-outlet" className="sr-only">Selling outlet</label>
           <select
             id="pos-outlet"
-            value={sellingFrom}
+            value={activeSellingFrom}
+            disabled={!owner}
             onChange={(event) => setSellingFrom(event.target.value)}
             className="max-w-44 bg-transparent text-xs font-semibold text-white outline-none [&>option]:bg-white [&>option]:text-[#111]"
           >
@@ -348,7 +328,17 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <section className="flex min-w-0 flex-1 flex-col gap-4 p-4 sm:p-5 lg:min-h-0">
+        <section className="flex min-w-0 flex-1 flex-col gap-5 p-4 sm:p-6 lg:min-h-0 lg:p-7">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-primary">Quick checkout</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-heading sm:text-3xl">Find products</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Search the catalog or scan a barcode to add an item.</p>
+            </div>
+            <div className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-muted-foreground">
+              <span className="font-bold text-heading">{filteredProducts.length}</span> available in this view
+            </div>
+          </div>
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <ScanBarcode className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -357,7 +347,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                 aria-label="Scan barcode or search products"
                 autoComplete="off"
                 autoFocus
-                className="h-12 bg-card pl-11 pr-16 text-base shadow-card"
+                className="h-14 rounded-xl border-border bg-white pl-11 pr-16 text-base shadow-sm focus-visible:ring-primary/20"
                 placeholder="Scan barcode or search by name / SKU"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
@@ -367,14 +357,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                 F2
               </span>
             </div>
-            <p className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-bold text-heading">{filteredProducts.length}</span> products
-              <span className="text-border">/</span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-                Live stock
-              </span>
-            </p>
+            <p className="hidden shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground sm:flex"><span className="size-2 rounded-full bg-emerald-500" />Live stock</p>
           </div>
 
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -382,7 +365,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
               type="button"
               onClick={() => setActiveCategory("All")}
               className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                "inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 activeCategory === "All"
                   ? "border-[#0c0d0e] bg-[#0c0d0e] text-white shadow-sm"
                   : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-heading",
@@ -392,20 +375,18 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
               All items
             </button>
             {posCategories.map((category) => {
-              const Icon = categoryStyles[category].icon;
               return (
                 <button
                   key={category}
                   type="button"
                   onClick={() => setActiveCategory(category)}
                   className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                    "inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     activeCategory === category
                       ? "border-[#0c0d0e] bg-[#0c0d0e] text-white shadow-sm"
                       : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-heading",
                   )}
                 >
-                  <Icon className="size-3.5" aria-hidden="true" />
                   {category}
                 </button>
               );
@@ -414,12 +395,10 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
 
           <div className="min-h-0 flex-1 overflow-y-auto pb-4 pr-0.5 [scrollbar-width:thin]">
             {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredProducts.map((product) => {
                   const available = stocks[product.id] ?? 0;
                   const inCart = cart.find((line) => line.productId === product.id)?.qty ?? 0;
-                  const meta = categoryStyles[product.category];
-                  const Icon = meta.icon;
                   const soldOut = available <= 0;
 
                   return (
@@ -430,16 +409,14 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                       aria-label={`Add ${product.name} to sale`}
                       onClick={() => addProduct(product)}
                       className={cn(
-                        "group relative flex min-h-40 flex-col rounded-xl border border-border bg-card p-3 text-left shadow-card transition-all",
+                        "group relative flex min-h-36 flex-col rounded-xl border border-border bg-white p-4 text-left shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                         soldOut
                           ? "cursor-not-allowed opacity-55"
                           : "hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md active:translate-y-0",
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <span className={cn("grid size-10 shrink-0 place-items-center rounded-lg", meta.tile)}>
-                          <Icon className="size-5" aria-hidden="true" />
-                        </span>
+                        <span className="rounded-md bg-[#f2f3f0] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">{product.category}</span>
                         {inCart > 0 ? (
                           <span className="grid size-6 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-foreground shadow-sm" aria-label={`${inCart} in cart`}>
                             {inCart}
@@ -451,15 +428,15 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                         ) : null}
                       </div>
 
-                      <p className="mt-2.5 line-clamp-2 min-h-9 text-[0.82rem] font-semibold leading-[1.35] text-heading">{product.name}</p>
-                      <p className="mt-1 truncate text-[0.62rem] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                      <p className="mt-3 line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-heading">{product.name}</p>
+                      <p className="mt-1 truncate text-[0.68rem] font-medium text-muted-foreground">
                         {product.sku} · {soldOut ? "Out of stock" : `${available} in stock`}
                       </p>
 
                       <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-                        <span className="text-sm font-bold tracking-tight text-heading">{money(product.price)}</span>
+                        <span className="text-base font-bold tracking-tight text-heading">{money(product.price)}</span>
                         <span className={cn(
-                          "grid size-7 shrink-0 place-items-center rounded-md border transition-colors",
+                          "grid size-8 shrink-0 place-items-center rounded-md border transition-colors",
                           soldOut ? "border-border text-muted-foreground" : "border-primary/20 bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground",
                         )}>
                           <Plus className="size-3.5" aria-hidden="true" />
@@ -483,17 +460,17 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
           </div>
         </section>
 
-        <aside className="flex w-full flex-col border-t border-border bg-card lg:min-h-0 lg:w-[25.5rem] lg:border-l lg:border-t-0 xl:w-[27rem]">
-          <div className="shrink-0 border-b border-border px-4 py-3">
+        <aside className="flex w-full flex-col border-t border-border bg-white lg:min-h-0 lg:w-[25.5rem] lg:border-l lg:border-t-0 xl:w-[28rem]">
+          <div className="shrink-0 border-b border-border px-5 py-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-bold text-heading">Current sale</p>
+                <p className="text-lg font-bold tracking-tight text-heading">Current sale</p>
                 <p className="text-[0.7rem] text-muted-foreground">
                   {itemCount === 0 ? "No items yet" : `${itemCount} item${itemCount === 1 ? "" : "s"} · ${cart.length} line${cart.length === 1 ? "" : "s"}`}
                 </p>
               </div>
               <Button
-                className="text-muted-foreground hover:text-destructive"
+                className="min-h-10 text-muted-foreground hover:text-destructive"
                 disabled={cart.length === 0}
                 size="sm"
                 variant="ghost"
@@ -510,7 +487,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                 id="pos-customer"
                 value={customer}
                 onChange={(event) => setCustomer(event.target.value)}
-                className="h-9 flex-1 rounded-md border border-input bg-background px-2 text-sm font-medium text-heading focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                className="h-11 flex-1 rounded-lg border border-input bg-background px-3 text-sm font-medium text-heading focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
               >
                 {posCustomers.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
@@ -546,7 +523,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                         <button
                           type="button"
                           aria-label={`Remove ${line.name}`}
-                          className="grid size-6 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          className="grid size-10 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => removeLine(line.productId)}
                         >
                           <X className="size-3.5" />
@@ -557,7 +534,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                           <button
                             type="button"
                             aria-label={`Decrease quantity of ${line.name}`}
-                            className="grid size-7 place-items-center text-muted-foreground transition-colors hover:text-heading disabled:cursor-not-allowed disabled:opacity-35"
+                            className="grid size-10 place-items-center text-muted-foreground transition-colors hover:text-heading disabled:cursor-not-allowed disabled:opacity-35"
                             disabled={line.qty <= 1}
                             onClick={() => changeQuantity(line.productId, line.qty - 1)}
                           >
@@ -567,7 +544,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                           <button
                             type="button"
                             aria-label={`Increase quantity of ${line.name}`}
-                            className="grid size-7 place-items-center text-muted-foreground transition-colors hover:text-heading disabled:cursor-not-allowed disabled:opacity-35"
+                            className="grid size-10 place-items-center text-muted-foreground transition-colors hover:text-heading disabled:cursor-not-allowed disabled:opacity-35"
                             disabled={line.qty >= available}
                             onClick={() => changeQuantity(line.productId, line.qty + 1)}
                           >
@@ -583,7 +560,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
             )}
           </div>
 
-          <div className="shrink-0 border-t border-border bg-card p-4 shadow-[0_-8px_24px_rgb(12_13_14/0.04)]">
+          <div className="shrink-0 border-t border-border bg-white p-5 shadow-[0_-8px_24px_rgb(12_13_14/0.04)]">
             <dl className="space-y-1.5 text-xs">
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Subtotal</dt>
@@ -613,12 +590,13 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
             </dl>
             {discountInvalid ? <p className="mt-1 text-[0.65rem] text-destructive">Discount must be between $0 and the subtotal.</p> : null}
 
-            <div className="mt-3 flex items-end justify-between gap-3 border-t border-border pt-3">
-              <span className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">Amount due</span>
-              <span className="numeric text-2xl font-black tracking-tight text-primary">{money(total)}</span>
+            <div className="mt-4 flex items-end justify-between gap-3 border-t border-border pt-4">
+              <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Total to pay</span>
+              <span className="numeric text-3xl font-black tracking-tight text-heading">{money(total)}</span>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-1.5">
+            <p className="mt-4 text-xs font-semibold text-heading">Payment method</p>
+            <div className="mt-2 grid grid-cols-3 gap-2" role="group" aria-label="Payment method">
               {paymentOptions.map((option) => {
                 const Icon = option.icon;
                 const active = paymentMethod === option.value;
@@ -628,7 +606,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                     type="button"
                     onClick={() => setPaymentMethod(option.value)}
                     className={cn(
-                      "flex flex-col items-center justify-center gap-1 rounded-lg border py-2 text-[0.68rem] font-semibold transition-colors",
+                    "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg border py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                       active
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border bg-background text-muted-foreground hover:bg-muted",
@@ -641,15 +619,15 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
               })}
             </div>
 
-            {paymentMethod === "card" ? (
-              <div className="mt-2 flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-2.5 py-2">
-                <CreditCard className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            {paymentMethod === "bank" && owner ? (
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                <Building2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <label htmlFor="pos-bank" className="sr-only">Receiving bank account</label>
                 <select
                   id="pos-bank"
                   value={bankAccount}
                   onChange={(event) => setBankAccount(event.target.value)}
-                  className="h-7 flex-1 bg-transparent text-[0.7rem] font-semibold text-heading outline-none"
+                  className="h-9 min-w-0 flex-1 bg-transparent text-xs font-semibold text-heading outline-none"
                 >
                   {posBankAccounts.map((account) => (
                     <option key={account.value} value={account.value}>{account.label}</option>
@@ -658,79 +636,18 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
               </div>
             ) : null}
 
-            {paymentMethod === "cash" ? (
-              <div className="mt-2 space-y-2 rounded-lg border border-dashed border-border bg-muted/30 p-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <label htmlFor="pos-tendered" className="text-[0.7rem] font-semibold text-heading">Cash received</label>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[0.6rem] font-semibold text-muted-foreground">$</span>
-                    <input
-                      id="pos-tendered"
-                      type="number"
-                      min="0"
-                      inputMode="decimal"
-                      placeholder="0"
-                      value={tenderedInput}
-                      onChange={(event) => setTenderedInput(event.target.value)}
-                      onFocus={(event) => event.currentTarget.select()}
-                      className="h-7 w-24 rounded border border-input bg-background px-1.5 text-right font-mono text-xs font-bold text-heading outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
-                    />
-                  </div>
-                </div>
-                {quickCash.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {quickCash.map((amount, index) => (
-                      <button
-                        key={amount}
-                        type="button"
-                        onClick={() => setTenderedInput(String(amount))}
-                        className="rounded-md border border-border bg-background px-2 py-0.5 text-[0.62rem] font-semibold text-heading transition-colors hover:border-primary/40 hover:bg-primary/5"
-                      >
-                        {index === 0 ? "Exact" : amount.toLocaleString()}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="flex items-center justify-between border-t border-border/70 pt-1.5 text-xs">
-                  <span className="text-muted-foreground">Change due</span>
-                  <span className={cn("font-bold tabular-nums", isCashShort ? "text-destructive" : "text-success")}>{money(change)}</span>
-                </div>
-                {isCashShort && tenderedInput !== "" ? (
-                  <p className="text-[0.62rem] text-destructive">Cash received is less than the amount due.</p>
-                ) : null}
-              </div>
-            ) : null}
-
-            {paymentMethod === "credit" ? (
-              <p className={cn(
-                "mt-2 rounded-lg border border-dashed px-2.5 py-2 text-[0.66rem] leading-4",
-                needsCustomerAccount ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-border bg-muted/30 text-muted-foreground",
-              )}>
-                {needsCustomerAccount
-                  ? "Choose a customer account above to record this sale on credit."
-                  : `Full amount will be posted to ${customer}'s account.`}
-              </p>
-            ) : null}
+            <p className="mt-3 text-xs text-muted-foreground">The full total will be recorded as paid by {paymentMethod === "bank" ? "bank transfer" : paymentMethod}.</p>
 
             <Button
-              className="mt-3 h-12 w-full text-base font-bold shadow-md"
+              className="mt-4 h-14 w-full text-base font-bold shadow-md"
               disabled={!canCharge}
               size="lg"
               onClick={handleCharge}
             >
               <CheckCircle2 className="size-5" />
-              Charge {money(total)}
+              Confirm payment · {money(total)}
             </Button>
-            {!canCharge && cart.length > 0 && !discountInvalid ? (
-              <p role="status" className="mt-1.5 text-center text-[0.65rem] text-destructive">
-                {needsCustomerAccount
-                  ? "Select a customer account to continue."
-                  : isCashShort
-                    ? "Enter the cash received to complete payment."
-                    : "Complete the sale details to continue."}
-              </p>
-            ) : null}
-            <p className="mt-2 text-center text-[0.6rem] text-muted-foreground">F2 search · F9 charge</p>
+            <p className="mt-2 text-center text-[0.68rem] text-muted-foreground">F2 search · F9 confirm payment</p>
           </div>
         </aside>
       </div>

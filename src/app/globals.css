@@ -60,14 +60,16 @@ html {
   text-rendering: optimizeLegibility;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  color: var(--heading);
-  letter-spacing: -0.035em;
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--heading);
+    letter-spacing: -0.035em;
+  }
 }
 
 body {

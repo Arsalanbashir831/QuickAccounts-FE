@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/shell/app-shell";
+import { DemoAccessGate } from "@/features/auth/demo-access-gate";
 import { CompanyRuntimeProvider } from "@/providers/company-runtime-provider";
 
 export default async function CompanyLayout({
@@ -13,7 +14,7 @@ export default async function CompanyLayout({
 
   return (
     <CompanyRuntimeProvider key={`demo-user:demo-tenant:${companyId}`}>
-      <AppShell companyId={companyId}>{children}</AppShell>
+      <DemoAccessGate companyId={companyId}><AppShell companyId={companyId}>{children}</AppShell></DemoAccessGate>
     </CompanyRuntimeProvider>
   );
 }

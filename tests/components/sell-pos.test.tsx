@@ -8,6 +8,21 @@ vi.mock("read-excel-file/browser", () => ({ readSheet: vi.fn(async () => [["Barc
 afterEach(cleanup);
 
 describe("SellPos", () => {
+  it("offers direct cash, card, and bank payment without a received amount", async () => {
+    const user = userEvent.setup();
+    render(<SellPos />);
+
+    expect(screen.getByRole("button", { name: "Cash" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Card" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Bank" })).toBeVisible();
+    expect(screen.queryByLabelText("Tendered cash")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Bank" }));
+    expect(screen.getByLabelText("Select bank account")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Card" }));
+    expect(screen.queryByLabelText("Select bank account")).not.toBeInTheDocument();
+  });
+
   it("requires one unique code per unit even when warranty is off", async () => {
     const user = userEvent.setup();
     render(<SellPos />);
@@ -34,7 +49,7 @@ describe("SellPos", () => {
     const user = userEvent.setup();
     render(<SellPos />);
 
-    fireEvent.change(screen.getAllByLabelText("Invoice unit price (PKR)")[0], { target: { value: "110000" } });
+    fireEvent.change(screen.getAllByLabelText("Invoice unit price (USD)")[0], { target: { value: "110000" } });
     const codes = screen.getAllByPlaceholderText("Scan, paste, or type");
     fireEvent.change(codes[1], { target: { value: "ANK-001" } });
     fireEvent.change(codes[2], { target: { value: "ANK-002" } });
@@ -43,7 +58,7 @@ describe("SellPos", () => {
     await user.click(screen.getByRole("button", { name: "Preview / Print Invoice" }));
 
     const document = screen.getByTitle(/Invoice DOT-INV-/).getAttribute("srcdoc") ?? "";
-    expect(document).toContain("PKR 110,000");
+    expect(document).toContain("$110,000");
     expect(document).toContain("358291048291048");
     expect(document).toContain("ANK-001, ANK-002");
     expect(document).toContain("1 year warranty");

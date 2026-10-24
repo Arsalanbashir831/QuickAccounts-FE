@@ -10,12 +10,14 @@ import { SerialEntryTable } from "@/features/sales/components/serial-entry-table
 import { addSerialCodes, pasteSerialCodes } from "@/features/sales/components/serial-code-utils";
 import { usePurchaseOrders, writePurchaseOrders, type PurchaseOrder } from "../purchase-store";
 import { PurchasePrintTemplate } from "./purchase-print-template";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 
 const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 const subscribeToNothing = () => () => {};
 
 export function PurchaseOrderDetails({ companyId, orderId }: { companyId: string; orderId: string }) {
   const orders = usePurchaseOrders(companyId);
+  const owner = isOwner(useDemoSession());
   const isHydrated = useSyncExternalStore(subscribeToNothing, () => true, () => false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [notice, setNotice] = useState("");
@@ -51,7 +53,7 @@ export function PurchaseOrderDetails({ companyId, orderId }: { companyId: string
         eyebrow="Purchases · Order details"
         title={order.poNumber}
         description={`${order.supplier} · supplier invoice ${order.supplierInvoice || "not provided"}${order.supplierInvoiceDate ? ` · ${order.supplierInvoiceDate}` : ""}`}
-        action={<Button onClick={() => setShowPrintPreview(true)}><Printer className="size-4" />Print receipt</Button>}
+        action={owner ? <Button onClick={() => setShowPrintPreview(true)}><Printer className="size-4" />Print receipt</Button> : undefined}
       />
 
       <Card>
@@ -60,7 +62,7 @@ export function PurchaseOrderDetails({ companyId, orderId }: { companyId: string
           <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div><p className="text-muted-foreground">Stock destination</p><p className="font-semibold text-heading">{order.destination}</p></div>
             <div><p className="text-muted-foreground">Expected delivery</p><p className="font-semibold text-heading">{order.expectedDate}</p></div>
-            <div><p className="text-muted-foreground">Payment</p><p className="font-semibold text-heading">{paymentLabel}</p>{order.bankAccount ? <p className="text-xs text-muted-foreground">{order.bankAccount}</p> : null}</div>
+            {owner ? <div><p className="text-muted-foreground">Payment</p><p className="font-semibold text-heading">{paymentLabel}</p>{order.bankAccount ? <p className="text-xs text-muted-foreground">{order.bankAccount}</p> : null}</div> : null}
             <div><p className="text-muted-foreground">Total</p><p className="font-semibold tabular-nums text-primary">{money(order.totalCost)}</p></div>
           </div>
           <div className="grid gap-4 border-t pt-4 text-sm sm:grid-cols-2">
@@ -96,7 +98,7 @@ export function PurchaseOrderDetails({ companyId, orderId }: { companyId: string
         </CardContent>
       </Card>
 
-      {showPrintPreview ? <PurchasePrintTemplate order={order} onClose={() => setShowPrintPreview(false)} /> : null}
+      {showPrintPreview && owner ? <PurchasePrintTemplate order={order} onClose={() => setShowPrintPreview(false)} /> : null}
     </div>
   );
 }

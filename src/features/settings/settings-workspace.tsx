@@ -131,7 +131,7 @@ function TeamSettings({ companyId }: SettingsPanelProps) {
 
   return <div className="space-y-5">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-heading">Team access</h2><p className="mt-1 text-sm text-muted-foreground">Manage the role and location scope shown for each team member.</p></div><Button onClick={() => { setIsAdding((open) => !open); setError(""); }}><Plus className="size-4" />Add team member</Button></div>
-    <div className="flex gap-3 rounded-lg border border-amber-300/50 bg-amber-50/70 p-4 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-100"><ShieldAlert className="mt-0.5 size-5 shrink-0" /><p><strong>Demo access only.</strong> These roles are saved in this browser and do not grant or restrict access to the backend. Connect the verified Django permissions before using this for real accounts.</p></div>
+    <div className="flex gap-3 rounded-lg border border-amber-300/50 bg-amber-50/70 p-4 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-100"><ShieldAlert className="mt-0.5 size-5 shrink-0" /><p><strong>Demo access only.</strong> Sign-in uses the fixed credentials shown on the access page. Team records here do not create login accounts or secure backend data; verified Django permissions are required for real users.</p></div>
     {isAdding ? <SettingSection title="Add team member" description="Add a demo team record and choose its role and location scope.">
       <form onSubmit={addMember} className="grid gap-4 sm:grid-cols-2">
         <Field label="Name"><Input required autoFocus value={newMember.name} onChange={(event) => setNewMember({ ...newMember, name: event.target.value })} /></Field>

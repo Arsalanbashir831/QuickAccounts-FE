@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCompanySettings } from "@/features/settings/settings-store";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { shipmentStatusFor, useInvoices, writeInvoices, type InvoiceRecord } from "../invoice-store";
 import { InvoicePrintTemplate } from "./invoice-print-template";
 
@@ -20,6 +21,7 @@ const statusTone = (status: InvoiceRecord["status"]) => status === "Paid" ? "suc
 
 export function InvoiceDetails({ companyId, invoiceId }: { companyId: string; invoiceId: string }) {
   const invoices = useInvoices(companyId);
+  const owner = isOwner(useDemoSession());
   const companySettings = useCompanySettings(companyId);
   const isHydrated = useSyncExternalStore(subscribeToNothing, () => true, () => false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
@@ -52,7 +54,7 @@ export function InvoiceDetails({ companyId, invoiceId }: { companyId: string; in
   return (
     <div className="workspace-enter space-y-5 pb-10">
       <Button asChild size="sm" variant="ghost"><Link href={returnHref}><ArrowLeft className="size-4" />Back to invoices</Link></Button>
-      <WorkspaceHeader eyebrow="Sales · Invoice details" title={invoice.reference} description={`${invoice.customer} · issued ${invoice.date}`} action={<Button onClick={() => setShowPrintPreview(true)}><Printer className="size-4" />Print invoice</Button>} />
+      <WorkspaceHeader eyebrow="Sales · Invoice details" title={invoice.reference} description={`${invoice.customer} · issued ${invoice.date}`} action={owner ? <Button onClick={() => setShowPrintPreview(true)}><Printer className="size-4" />Print invoice</Button> : undefined} />
 
       <Card>
         <CardHeader className="border-b"><CardTitle>Invoice overview</CardTitle><CardDescription>Customer, outlet, and settlement details</CardDescription></CardHeader>
@@ -60,18 +62,18 @@ export function InvoiceDetails({ companyId, invoiceId }: { companyId: string; in
           <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div><p className="text-muted-foreground">Customer</p><p className="font-semibold text-heading">{invoice.customer}</p></div>
             <div><p className="text-muted-foreground">Selling outlet</p><p className="font-semibold text-heading">{invoice.outlet}</p></div>
-            <div><p className="text-muted-foreground">Payment</p><p className="font-semibold text-heading">{paymentLabel[invoice.paymentMethod]}</p>{invoice.bankAccount ? <p className="text-xs text-muted-foreground">{invoice.bankAccount}</p> : null}</div>
+            {owner ? <div><p className="text-muted-foreground">Payment</p><p className="font-semibold text-heading">{paymentLabel[invoice.paymentMethod]}</p>{invoice.bankAccount ? <p className="text-xs text-muted-foreground">{invoice.bankAccount}</p> : null}</div> : null}
             <div><p className="text-muted-foreground">Total</p><p className="font-semibold tabular-nums text-primary">{money(invoice.total)}</p></div>
           </div>
           <div className="grid gap-4 border-t pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div><p className="text-muted-foreground">Issue date</p><p className="font-semibold text-heading">{invoice.date}</p></div>
             <div><p className="text-muted-foreground">Payment status</p><Badge tone={statusTone(invoice.status)}>{invoice.status}</Badge></div>
-            <div><p className="text-muted-foreground">Amount paid</p><p className="font-semibold tabular-nums text-heading">{money(invoice.paid)}</p></div>
-            <div><p className="text-muted-foreground">Balance due</p><p className="font-semibold tabular-nums text-heading">{money(invoice.balance)}</p></div>
+            {owner ? <div><p className="text-muted-foreground">Amount paid</p><p className="font-semibold tabular-nums text-heading">{money(invoice.paid)}</p></div> : null}
+            {owner ? <div><p className="text-muted-foreground">Balance due</p><p className="font-semibold tabular-nums text-heading">{money(invoice.balance)}</p></div> : null}
           </div>
           <div className="flex flex-wrap items-center gap-2 border-t pt-4 text-sm"><span className="text-muted-foreground">Shipment status</span><Badge tone={shipmentStatusFor(invoice) === "Shipped" ? "success" : "warning"}>{shipmentStatusFor(invoice)}</Badge>{invoice.shippedAt ? <span className="text-muted-foreground">Shipped {invoice.shippedAt}</span> : null}</div>
           {invoice.notes ? <p className="rounded-md bg-muted/50 px-3 py-2 text-sm"><span className="font-semibold">Notes: </span>{invoice.notes}</p> : null}
-          {invoice.balance > 0 ? <Button onClick={() => { setCollectAmount(invoice.balance); setShowCollection(true); }}><ArrowDownLeft className="size-4" />Collect payment</Button> : null}
+          {owner && invoice.balance > 0 ? <Button onClick={() => { setCollectAmount(invoice.balance); setShowCollection(true); }}><ArrowDownLeft className="size-4" />Collect payment</Button> : null}
           {notice ? <p role="status" className="text-sm text-muted-foreground">{notice}</p> : null}
         </CardContent>
       </Card>
@@ -86,8 +88,8 @@ export function InvoiceDetails({ companyId, invoiceId }: { companyId: string; in
         </CardContent>
       </Card>
 
-      {showCollection ? <div role="dialog" aria-modal="true" aria-label={`Collect payment for ${invoice.reference}`} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><Card className="w-full max-w-md shadow-2xl"><CardHeader className="flex-row items-center justify-between border-b"><div><CardTitle>Collect Payment</CardTitle><CardDescription>{invoice.reference} · balance {money(invoice.balance)}</CardDescription></div><Button variant="ghost" size="icon" aria-label="Close payment collection" onClick={() => setShowCollection(false)}><X className="size-4" /></Button></CardHeader><CardContent className="space-y-4 pt-4"><label className="block space-y-1.5 text-sm font-medium text-heading">Collection amount (USD)<Input type="number" min="0.01" max={invoice.balance} step="0.01" value={collectAmount} onChange={(event) => setCollectAmount(Number(event.target.value) || 0)} /></label><div><p className="mb-2 text-sm font-medium text-heading">Payment method</p><div className="grid grid-cols-3 gap-2">{([{ value: "cash", label: "Cash", icon: Wallet }, { value: "bank", label: "Card / Bank", icon: CreditCard }, { value: "credit", label: "Store Credit", icon: Building2 }] as const).map(({ value, label, icon: Icon }) => <button type="button" key={value} aria-pressed={collectMethod === value} onClick={() => setCollectMethod(value)} className={`flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center text-xs font-medium ${collectMethod === value ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}><Icon className="size-5" />{label}</button>)}</div></div>{collectMethod === "bank" ? <label className="block space-y-1.5 text-sm font-medium text-heading">Receiving bank account<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={collectBank} onChange={(event) => setCollectBank(event.target.value)}>{bankAccounts.map((bank) => <option key={bank}>{bank}</option>)}</select></label> : null}<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowCollection(false)}>Cancel</Button><Button disabled={collectAmount <= 0 || collectAmount > invoice.balance} onClick={handleCollect}>Confirm collection</Button></div></CardContent></Card></div> : null}
-      {showPrintPreview ? <InvoicePrintTemplate invoice={invoice} business={companySettings.business} onClose={() => setShowPrintPreview(false)} /> : null}
+      {showCollection && owner ? <div role="dialog" aria-modal="true" aria-label={`Collect payment for ${invoice.reference}`} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><Card className="w-full max-w-md shadow-2xl"><CardHeader className="flex-row items-center justify-between border-b"><div><CardTitle>Collect Payment</CardTitle><CardDescription>{invoice.reference} · balance {money(invoice.balance)}</CardDescription></div><Button variant="ghost" size="icon" aria-label="Close payment collection" onClick={() => setShowCollection(false)}><X className="size-4" /></Button></CardHeader><CardContent className="space-y-4 pt-4"><label className="block space-y-1.5 text-sm font-medium text-heading">Collection amount (USD)<Input type="number" min="0.01" max={invoice.balance} step="0.01" value={collectAmount} onChange={(event) => setCollectAmount(Number(event.target.value) || 0)} /></label><div><p className="mb-2 text-sm font-medium text-heading">Payment method</p><div className="grid grid-cols-3 gap-2">{([{ value: "cash", label: "Cash", icon: Wallet }, { value: "bank", label: "Card / Bank", icon: CreditCard }, { value: "credit", label: "Store Credit", icon: Building2 }] as const).map(({ value, label, icon: Icon }) => <button type="button" key={value} aria-pressed={collectMethod === value} onClick={() => setCollectMethod(value)} className={`flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center text-xs font-medium ${collectMethod === value ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}><Icon className="size-5" />{label}</button>)}</div></div>{collectMethod === "bank" ? <label className="block space-y-1.5 text-sm font-medium text-heading">Receiving bank account<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={collectBank} onChange={(event) => setCollectBank(event.target.value)}>{bankAccounts.map((bank) => <option key={bank}>{bank}</option>)}</select></label> : null}<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowCollection(false)}>Cancel</Button><Button disabled={collectAmount <= 0 || collectAmount > invoice.balance} onClick={handleCollect}>Confirm collection</Button></div></CardContent></Card></div> : null}
+      {showPrintPreview && owner ? <InvoicePrintTemplate invoice={invoice} business={companySettings.business} onClose={() => setShowPrintPreview(false)} /> : null}
     </div>
   );
 }

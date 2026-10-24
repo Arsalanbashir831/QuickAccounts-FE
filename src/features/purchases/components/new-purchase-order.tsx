@@ -8,6 +8,7 @@ import { WorkspaceHeader } from "@/components/shell/workspace-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { useLocations } from "@/features/settings/location-store";
 import { useCompanySettings } from "@/features/settings/settings-store";
 import { SerialEntryTable } from "@/features/sales/components/serial-entry-table";
@@ -25,7 +26,10 @@ const money = (value: number) => `$${value.toLocaleString("en-PK")}`;
 export function NewPurchaseOrder({ companyId }: { companyId: string }) {
   const router = useRouter();
   const orders = usePurchaseOrders(companyId);
-  const locations = useLocations(companyId);
+  const allLocations = useLocations(companyId);
+  const session = useDemoSession();
+  const owner = !session || isOwner(session);
+  const locations = owner ? allLocations : allLocations.filter((location) => location.id === session?.locationId);
   const companySettings = useCompanySettings(companyId);
   const [supplier, setSupplier] = useState<string>(suppliers[0]);
   const [supplierInvoice, setSupplierInvoice] = useState("");
@@ -38,7 +42,7 @@ export function NewPurchaseOrder({ companyId }: { companyId: string }) {
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<DraftItem[]>([]);
   const [error, setError] = useState("");
-  const selectedDestination = destination || locations.find((location) => location.id === companySettings.rules.defaultReceivingLocation)?.name || locations[0]?.name || "";
+  const selectedDestination = owner ? destination || locations.find((location) => location.id === companySettings.rules.defaultReceivingLocation)?.name || locations[0]?.name || "" : locations[0]?.name ?? "";
   const total = items.reduce((sum, item) => sum + item.qty * item.unitCost, 0);
   const serials = items.flatMap((item) => item.serials.map((serial) => serial.trim()).filter(Boolean));
   const duplicates = new Set(serials.filter((serial, index) => serials.indexOf(serial) !== index));
@@ -67,7 +71,7 @@ export function NewPurchaseOrder({ companyId }: { companyId: string }) {
       supplierInvoiceDate: supplierInvoiceDate ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${supplierInvoiceDate}T12:00:00`)) : undefined,
       date: new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date()),
       expectedDate: new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${expectedDate}T12:00:00`)),
-      destination: selectedDestination, paymentMethod, bankAccount: paymentMethod === "bank" ? bankAccount : undefined,
+      destination: selectedDestination, paymentMethod: owner ? paymentMethod : "credit", bankAccount: owner && paymentMethod === "bank" ? bankAccount : undefined,
       notes: notes.trim(), items: items.map((item) => ({ id: item.id, name: item.name, sku: item.sku, qty: item.qty, unitCost: item.unitCost, serials: item.serials })), totalCost: total,
       receivingStatus: "Awaiting shipment" as const,
     };
@@ -87,7 +91,7 @@ export function NewPurchaseOrder({ companyId }: { companyId: string }) {
             <label className="space-y-1.5 text-sm font-medium text-heading">Supplier<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-base" value={supplier} onChange={(event) => setSupplier(event.target.value)}>{suppliers.map((name) => <option key={name}>{name}</option>)}</select></label>
             <label className="space-y-1.5 text-sm font-medium text-heading">Supplier invoice number <span className="text-destructive">*</span><Input value={supplierInvoice} onChange={(event) => setSupplierInvoice(event.target.value)} placeholder="e.g. SUP-INV-1042" /></label>
             <label className="space-y-1.5 text-sm font-medium text-heading">Supplier invoice date<Input type="date" value={supplierInvoiceDate} onChange={(event) => setSupplierInvoiceDate(event.target.value)} /></label>
-            <label className="space-y-1.5 text-sm font-medium text-heading">Stock destination <span className="text-destructive">*</span><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-base" value={selectedDestination} onChange={(event) => setDestination(event.target.value)}>{locations.length === 0 ? <option value="">No locations added</option> : locations.map((location) => <option key={location.id} value={location.name}>{location.name} · {location.type}</option>)}</select><span className="block text-xs font-normal text-muted-foreground">From <Link className="text-primary hover:underline" href={`/c/${companyId}/settings?view=locations`}>Settings → Locations</Link></span></label>
+            <label className="space-y-1.5 text-sm font-medium text-heading">Stock destination <span className="text-destructive">*</span><select disabled={!owner} className="h-10 w-full rounded-md border border-input bg-background px-3 text-base" value={selectedDestination} onChange={(event) => setDestination(event.target.value)}>{locations.length === 0 ? <option value="">No locations added</option> : locations.map((location) => <option key={location.id} value={location.name}>{location.name} · {location.type}</option>)}</select><span className="block text-xs font-normal text-muted-foreground">{owner ? <Link className="text-primary hover:underline" href={`/c/${companyId}/settings?view=locations`}>Settings → Locations</Link> : "Assigned outlet"}</span></label>
             <label className="space-y-1.5 text-sm font-medium text-heading">Expected delivery <span className="text-destructive">*</span><Input type="date" value={expectedDate} onChange={(event) => setExpectedDate(event.target.value)} /></label>
           </CardContent></Card>
           <Card><CardHeader><CardTitle>Products and serials</CardTitle><CardDescription>Add products, set quantity and purchase cost, then scan or upload serials when available.</CardDescription></CardHeader><CardContent className="space-y-4">
@@ -101,11 +105,11 @@ export function NewPurchaseOrder({ companyId }: { companyId: string }) {
           </CardContent></Card>
         </div>
         <div className="space-y-5 xl:sticky xl:top-5">
-          <Card><CardHeader><CardTitle>Payment method</CardTitle><CardDescription>Use the same settlement choices as Sales.</CardDescription></CardHeader><CardContent className="space-y-4">
+          {owner ? <Card><CardHeader><CardTitle>Payment method</CardTitle><CardDescription>Use the same settlement choices as Sales.</CardDescription></CardHeader><CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-2">{([{ value: "cash", label: "Cash", icon: Wallet }, { value: "bank", label: "Card / Bank", icon: CreditCard }, { value: "credit", label: "Supplier Credit", icon: Building2 }] as const).map(({ value, label, icon: Icon }) => <button type="button" key={value} aria-pressed={paymentMethod === value} onClick={() => setPaymentMethod(value)} className={`flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center text-xs font-medium transition-colors ${paymentMethod === value ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}><Icon className="size-5" />{label}</button>)}</div>
             {paymentMethod === "bank" ? <label className="block space-y-1.5 text-sm font-medium text-heading">Paying from<select value={bankAccount} onChange={(event) => setBankAccount(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">{bankAccounts.map((account) => <option key={account}>{account}</option>)}</select></label> : null}
             {paymentMethod === "credit" ? <p className="text-xs text-muted-foreground">The full amount remains payable to the supplier.</p> : null}
-          </CardContent></Card>
+          </CardContent></Card> : <Card><CardHeader><CardTitle>Payment handled by owner</CardTitle><CardDescription>You can create the stock order for your outlet. An owner handles supplier settlement.</CardDescription></CardHeader></Card>}
           <Card><CardHeader><CardTitle>Order summary</CardTitle><CardDescription>{items.length} product {items.length === 1 ? "line" : "lines"}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex items-center justify-between border-b pb-3 text-sm"><span className="text-muted-foreground">Total units</span><strong className="tabular-nums">{items.reduce((sum, item) => sum + item.qty, 0)}</strong></div><div className="flex items-center justify-between text-sm"><span className="font-semibold">Total purchase cost</span><strong className="text-xl tabular-nums text-primary">{money(total)}</strong></div><label className="block space-y-1.5 text-sm font-medium text-heading">Order notes<textarea className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-base font-normal" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Delivery instructions or supplier terms" /></label><p className="text-xs text-muted-foreground">Serials may be added now or from the order details. All units need unique serials before marking the order received.</p>{error ? <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p> : null}<Button className="w-full" onClick={createOrder}>Create purchase order</Button></CardContent></Card>
         </div>
       </div>

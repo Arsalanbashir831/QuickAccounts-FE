@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { InvoicesView } from "./components/invoices-view";
 import { ShipmentStatusView } from "./components/shipment-status-view";
 import { salesViews } from "./sales-views";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 export { salesViews } from "./sales-views";
 
 export const SalesWorkspace = ({
@@ -16,18 +17,20 @@ export const SalesWorkspace = ({
   companyId: string;
   initialView: string;
 }) => {
+  const owner = isOwner(useDemoSession());
+  const activeView = owner ? initialView : "invoices";
   return (
     <div className="workspace-enter space-y-5">
       <WorkspaceHeader
         eyebrow="Sales · Revenue & Fulfilment"
         title="Sales Workspace"
-        description="Create point-of-sale invoices, follow credit balances, and fulfill customer commitments."
+        description={owner ? "Create point-of-sale invoices, follow credit balances, and fulfill customer commitments." : "Create and review sales for your assigned outlet."}
       />
 
       {/* View Switcher Tabs */}
       <div className="flex gap-1 overflow-x-auto rounded-lg border bg-card p-1">
-        {salesViews.map((tab) => {
-          const isActive = initialView === tab.value;
+        {salesViews.filter((tab) => owner || tab.value === "invoices").map((tab) => {
+          const isActive = activeView === tab.value;
           return (
             <Button
               key={tab.value}
@@ -42,8 +45,8 @@ export const SalesWorkspace = ({
         })}
       </div>
 
-      {initialView === "invoices" && <InvoicesView companyId={companyId} />}
-      {initialView === "shipments" && <ShipmentStatusView companyId={companyId} />}
+      {activeView === "invoices" && <InvoicesView companyId={companyId} />}
+      {activeView === "shipments" && <ShipmentStatusView companyId={companyId} />}
     </div>
   );
 };

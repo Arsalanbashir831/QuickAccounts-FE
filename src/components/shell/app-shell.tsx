@@ -1,14 +1,17 @@
 "use client";
 
-import { Building2, ChevronDown, Menu, ScanBarcode, Search, X } from "lucide-react";
+import { Building2, ChevronDown, LogOut, Menu, ScanBarcode, Search, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { navigation } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { isOwner, signOutDemo, useDemoSession } from "@/features/auth/demo-session";
+import { StaffHomeWorkspace } from "@/features/home/staff-home-workspace";
+import { useLocations } from "@/features/settings/location-store";
 type AppShellProps = {
   companyId: string;
   children: ReactNode;
@@ -16,6 +19,12 @@ type AppShellProps = {
 
 export const AppShell = ({ companyId, children }: AppShellProps) => {
   const pathname = usePathname();
+  const router = useRouter();
+  const session = useDemoSession();
+  const locations = useLocations(companyId);
+  const owner = isOwner(session);
+  const assignedLocation = locations.find((location) => location.id === session?.locationId)?.name;
+  const visibleNavigation = owner ? navigation : navigation.filter((item) => ["home", "sales", "stock", "locations"].includes(item.slug));
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -34,7 +43,7 @@ export const AppShell = ({ companyId, children }: AppShellProps) => {
         </Link>
       </div>
       <nav aria-label="Primary" className="flex-1 space-y-1 overflow-y-auto p-3">
-        {navigation.map((item) => {
+        {visibleNavigation.map((item) => {
           const href = `/c/${companyId}/${item.slug}`;
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
           const Icon = item.icon;
@@ -61,7 +70,7 @@ export const AppShell = ({ companyId, children }: AppShellProps) => {
                 </button>
                 {isOpen ? (
                   <div id={groupId} className="ml-[1.35rem] mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
-                    {item.children.map((child) => {
+                    {item.children.filter((child) => owner || ["stock/purchases", "stock/products"].includes(child.slug)).map((child) => {
                       const childHref = `/c/${companyId}/${child.slug}`;
                       const isChildActive = pathname === childHref || pathname.startsWith(`${childHref}/`);
                       return (
@@ -106,11 +115,12 @@ export const AppShell = ({ companyId, children }: AppShellProps) => {
       </nav>
       <div className="border-t border-white/10 p-4">
         <div className="flex items-center gap-3 rounded-lg bg-white/5 border border-white/10 p-3">
-          <div className="grid size-8 place-items-center rounded-full bg-white/15 text-xs font-bold text-white">SH</div>
+          <div className="grid size-8 place-items-center rounded-full bg-white/15 text-xs font-bold text-white">{session?.name.split(" ").map((part) => part[0]).slice(0, 2).join("") ?? "DM"}</div>
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-white">Demo owner</p>
-            <p className="truncate text-[0.68rem] text-white/50">Owner access</p>
+            <p className="truncate text-xs font-semibold text-white">{session?.name}</p>
+            <p className="truncate text-[0.68rem] text-white/50">{owner ? `${session?.role} access` : assignedLocation ?? "Outlet access"}</p>
           </div>
+          <button type="button" aria-label="Sign out" title="Sign out" onClick={() => { signOutDemo(); router.replace("/access"); }} className="ml-auto grid size-9 shrink-0 place-items-center rounded-md text-white/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white"><LogOut className="size-4" /></button>
         </div>
       </div>
     </>
@@ -169,7 +179,7 @@ export const AppShell = ({ companyId, children }: AppShellProps) => {
             </Button>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[100rem] p-4 sm:p-6 xl:p-8">{children}</main>
+        <main className="mx-auto w-full max-w-[100rem] p-4 sm:p-6 xl:p-8">{!owner && pathname === `/c/${companyId}/home` ? <StaffHomeWorkspace companyId={companyId} /> : children}</main>
       </div>
     </div>
   );

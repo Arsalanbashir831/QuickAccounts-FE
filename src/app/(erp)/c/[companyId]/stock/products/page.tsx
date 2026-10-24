@@ -9,7 +9,7 @@ export default async function StockProductsPage({ params }: { params: Promise<{ 
   const { companyId } = await params;
   return (
     <div className="workspace-enter space-y-5">
-      <WorkspaceHeader eyebrow="Stock · Products" title="Products" description="See how much of each product you have at every location, and manage your product list." />
+      <WorkspaceHeader eyebrow="Stock · Products" title="Products" description="Review stock at your permitted locations and browse the product catalog." />
       <StockBalancesView companyId={companyId} />
       <ProductsView />
     </div>

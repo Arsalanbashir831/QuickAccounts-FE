@@ -11,7 +11,6 @@ import {
   Search,
   ShoppingCart,
   Trash2,
-  User,
   Wallet,
 } from "lucide-react";
 import { useState } from "react";
@@ -19,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useLocations } from "@/features/settings/location-store";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { useCompanySettings } from "@/features/settings/settings-store";
 import { InvoicePrintTemplate, type PrintableInvoice } from "./invoice-print-template";
 import { SerialEntryTable } from "./serial-entry-table";
@@ -113,8 +113,13 @@ export const SellPos = ({
   startEmpty?: boolean;
 }) => {
   const locations = useLocations(companyId);
+  const session = useDemoSession();
+  const owner = !session || isOwner(session);
   const companySettings = useCompanySettings(companyId);
   const [sellingFrom, setSellingFrom] = useState(() => locations.find((location) => location.id === companySettings.rules.defaultSalesLocation)?.name ?? locations.find((location) => location.type === "Outlet")?.name ?? "Main Outlet");
+  const assignedOutlet = locations.find((location) => location.id === session?.locationId)?.name;
+  const activeSellingFrom = owner ? sellingFrom : assignedOutlet ?? sellingFrom;
+  const selectableLocations = owner ? locations : locations.filter((location) => location.id === session?.locationId);
   const [customer, setCustomer] = useState("Walk-in Customer");
   const [cart, setCart] = useState<CartItem[]>(() => startEmpty ? [] : [
     {
@@ -143,10 +148,9 @@ export const SellPos = ({
     },
   ]);
 
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "credit">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "bank">("cash");
   const [bankAccount, setBankAccount] = useState(BANK_ACCOUNTS[0].value);
   const [discount, setDiscount] = useState(0);
-  const [tenderedAmount, setTenderedAmount] = useState(150000);
   const [searchQuery, setSearchQuery] = useState("");
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
   const [quantityErrors, setQuantityErrors] = useState<Record<string, string>>({});
@@ -160,7 +164,6 @@ export const SellPos = ({
   const taxRate = companySettings.rules.taxRate / 100;
   const tax = Math.round(taxableAmount * (companySettings.rules.taxInclusive ? taxRate / (1 + taxRate) : taxRate));
   const grandTotal = Math.max(0, companySettings.rules.taxInclusive ? taxableAmount : taxableAmount + tax);
-  const changeDue = Math.max(0, tenderedAmount - grandTotal);
   const allSerials = cart.flatMap((item) => item.serials.map((serial) => serial.trim()).filter(Boolean));
   const duplicateSerials = new Set(allSerials.filter((serial, index) => allSerials.indexOf(serial) !== index));
   const missingSerials = cart.reduce((count, item) => count + item.serials.filter((serial) => !serial.trim()).length, 0);
@@ -171,7 +174,7 @@ export const SellPos = ({
   const hasQuantityIssues = Object.values(quantityErrors).some(Boolean) ||
     Object.entries(quantityDrafts).some(([id, draft]) => cart.some((item) => item.id === id && draft !== String(item.qty)));
   const canConfirm = cart.length > 0 && !hasInvalidItems && missingSerials === 0 && duplicateSerials.size === 0 &&
-    !hasQuantityIssues && discount >= 0 && discount <= subtotal && (paymentMethod !== "cash" || tenderedAmount >= grandTotal);
+    !hasQuantityIssues && discount >= 0 && discount <= subtotal;
 
   const addItem = (item: (typeof sampleCatalog)[0]) => {
     setCart((prev) => {
@@ -289,13 +292,13 @@ export const SellPos = ({
           ? issuedAt.toLocaleDateString("en-CA")
           : issuedAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
       customer,
-      outlet: sellingFrom,
+      outlet: activeSellingFrom,
       total: grandTotal,
-      paid: paymentMethod === "credit" ? 0 : grandTotal,
-      balance: paymentMethod === "credit" ? grandTotal : 0,
-      status: paymentMethod === "credit" ? "Unpaid" : "Paid",
-      paymentMethod: paymentMethod === "card" ? "bank" : paymentMethod,
-      bankAccount: paymentMethod === "card" ? BANK_ACCOUNTS.find((bank) => bank.value === bankAccount)?.label : undefined,
+      paid: grandTotal,
+      balance: 0,
+      status: "Paid",
+      paymentMethod: paymentMethod === "cash" ? "cash" : "bank",
+      bankAccount: paymentMethod === "bank" && owner ? BANK_ACCOUNTS.find((bank) => bank.value === bankAccount)?.label : undefined,
       discount,
       tax,
       taxRate: companySettings.rules.taxRate,
@@ -339,9 +342,9 @@ export const SellPos = ({
               </div>
               <div className="flex justify-between pt-2">
                 <span className="text-muted-foreground">Payment Method:</span>
-                <span className="font-semibold capitalize text-heading">{paymentMethod === "card" ? "Card / Bank" : paymentMethod}</span>
+                <span className="font-semibold capitalize text-heading">{paymentMethod}</span>
               </div>
-              {paymentMethod === "card" && (
+              {paymentMethod === "bank" && owner && (
                 <div className="flex justify-between pt-1">
                   <span className="text-muted-foreground">Bank Account:</span>
                   <span className="font-semibold text-heading text-right max-w-[60%]">
@@ -401,12 +404,13 @@ export const SellPos = ({
               <select
                 aria-label="Selling from outlet or warehouse"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-base text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={sellingFrom}
+                value={activeSellingFrom}
+                disabled={!owner}
                 onChange={(e) => setSellingFrom(e.target.value)}
               >
-                {locations.filter((loc) => loc.type === "Outlet").length > 0 && (
+                {selectableLocations.filter((loc) => loc.type === "Outlet").length > 0 && (
                   <optgroup label="Retail Outlets">
-                    {locations
+                    {selectableLocations
                       .filter((loc) => loc.type === "Outlet")
                       .map((loc) => (
                         <option key={loc.id} value={loc.name}>
@@ -415,9 +419,9 @@ export const SellPos = ({
                       ))}
                   </optgroup>
                 )}
-                {locations.filter((loc) => loc.type === "Warehouse").length > 0 && (
+                {selectableLocations.filter((loc) => loc.type === "Warehouse").length > 0 && (
                   <optgroup label="Warehouses">
-                    {locations
+                    {selectableLocations
                       .filter((loc) => loc.type === "Warehouse")
                       .map((loc) => (
                         <option key={loc.id} value={loc.name}>
@@ -665,23 +669,22 @@ export const SellPos = ({
                     }`}
                 >
                   <CreditCard className="size-4" />
-                  Card / Bank
+                  Card
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod("credit")}
-                  className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 text-xs font-semibold transition-all ${paymentMethod === "credit"
+                  onClick={() => setPaymentMethod("bank")}
+                  className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 text-xs font-semibold transition-all ${paymentMethod === "bank"
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border bg-card text-muted-foreground hover:bg-muted"
                     }`}
                 >
-                  <User className="size-4" />
-                  Store Credit
+                  <Building2 className="size-4" />
+                  Bank
                 </button>
               </div>
 
-              {/* Bank Account Selector — visible only when Card/Bank is selected */}
-              {paymentMethod === "card" && (
+              {paymentMethod === "bank" && owner && (
                 <div className="mt-3 flex items-center gap-2 rounded-lg border border-dashed bg-muted/30 px-3 py-2.5">
                   <Building2 className="size-4 shrink-0 text-primary" />
                   <div className="flex flex-1 flex-col gap-0.5">
@@ -741,29 +744,7 @@ export const SellPos = ({
               </div>
             </div>
 
-            {/* Cash Tendered Input */}
-            {paymentMethod === "cash" && (
-              <div className="space-y-2 rounded-lg border border-dashed p-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-heading">Tendered Cash:</label>
-                  <input
-                    type="number"
-                    min="0"
-                    aria-label="Tendered cash"
-                    className="w-32 rounded border bg-background px-2.5 py-1 text-right font-mono text-sm font-bold text-heading"
-                    value={tenderedAmount}
-                    onChange={(e) => setTenderedAmount(Number(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="flex items-center justify-between pt-1 text-xs">
-                  <span className="text-muted-foreground">Change Due to Customer:</span>
-                  <span className="font-bold text-success">
-                    ${changeDue.toLocaleString()}
-                  </span>
-                </div>
-                {tenderedAmount < grandTotal ? <p className="text-xs text-destructive">Tendered cash must cover the invoice total.</p> : null}
-              </div>
-            )}
+            <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">The full invoice total will be recorded as paid by {paymentMethod === "bank" ? "bank transfer" : paymentMethod}.</p>
 
             <div className="space-y-2 border-t pt-4">
               <label htmlFor="saved-invoice-note" className="block text-xs font-semibold text-heading">Additional invoice notes</label>
@@ -798,7 +779,6 @@ export const SellPos = ({
                   {hasInvalidItems ? "Check item price, stock, and warranty duration. " : ""}
                   {hasQuantityIssues ? "Finish or correct the quantity entry. " : ""}
                   {discount < 0 || discount > subtotal ? "Check the discount amount. " : ""}
-                  {paymentMethod === "cash" && tenderedAmount < grandTotal ? "Cash received is below the total. " : ""}
                 </p>
               ) : null}
               <Button

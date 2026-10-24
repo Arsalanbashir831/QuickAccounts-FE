@@ -9,12 +9,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePurchaseOrders, type PurchaseOrder } from "../purchase-store";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
+import { useLocations } from "@/features/settings/location-store";
 
 const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 
 export function PurchaseOrdersView({ companyId }: { companyId: string }) {
   const router = useRouter();
-  const orders = usePurchaseOrders(companyId);
+  const allOrders = usePurchaseOrders(companyId);
+  const session = useDemoSession();
+  const locations = useLocations(companyId);
+  const assignedOutlet = locations.find((location) => location.id === session?.locationId)?.name;
+  const orders = isOwner(session) ? allOrders : allOrders.filter((order) => order.destination === assignedOutlet);
   const [search, setSearch] = useState("");
   const filtered = orders.filter((order) => `${order.poNumber} ${order.supplier} ${order.supplierInvoice} ${order.destination}`.toLowerCase().includes(search.toLowerCase()));
   const outstanding = orders.filter((order) => order.receivingStatus !== "Received");
@@ -34,7 +40,7 @@ export function PurchaseOrdersView({ companyId }: { companyId: string }) {
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
         <Card><CardHeader className="p-4"><CardDescription>Total orders</CardDescription><CardTitle className="numeric text-2xl font-bold text-heading">{orders.length}</CardTitle></CardHeader></Card>
-        <Card><CardHeader className="p-4"><CardDescription>Value in transit or pending</CardDescription><CardTitle className="numeric text-2xl font-bold text-primary">{money(outstanding.reduce((sum, order) => sum + order.totalCost, 0))}</CardTitle></CardHeader></Card>
+        {isOwner(session) ? <Card><CardHeader className="p-4"><CardDescription>Value in transit or pending</CardDescription><CardTitle className="numeric text-2xl font-bold text-primary">{money(outstanding.reduce((sum, order) => sum + order.totalCost, 0))}</CardTitle></CardHeader></Card> : null}
         <Card><CardHeader className="p-4"><CardDescription>Received orders</CardDescription><CardTitle className="numeric text-2xl font-bold text-heading">{orders.length - outstanding.length}</CardTitle></CardHeader></Card>
       </div>
 

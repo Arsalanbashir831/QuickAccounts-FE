@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StockFormDialog } from "./stock-form-dialog";
 
@@ -74,6 +75,8 @@ const mockProducts: ProductCatalogItem[] = [
 ];
 
 export const ProductsView = () => {
+  const session = useDemoSession();
+  const owner = !session || isOwner(session);
   const [products, setProducts] = useState<ProductCatalogItem[]>(mockProducts);
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -94,6 +97,7 @@ export const ProductsView = () => {
   );
 
   const handleAddProduct = () => {
+    if (!owner) return;
     if (!name.trim() || !sku.trim()) return;
     const newProd: ProductCatalogItem = {
       id: `prod-${Date.now()}`,
@@ -120,7 +124,7 @@ export const ProductsView = () => {
           <div>
             <CardTitle>Product Catalog & Master SKUs</CardTitle>
             <CardDescription>
-              Maintain product identifiers, costs, selling prices, and serial tracking rules
+              {owner ? "Maintain product identifiers, costs, selling prices, and serial tracking rules" : "Shared product catalog for outlet sales and purchase entries"}
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -133,10 +137,10 @@ export const ProductsView = () => {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Button size="sm" onClick={() => setShowAddModal(true)}>
+            {owner ? <Button size="sm" onClick={() => setShowAddModal(true)}>
               <Plus className="size-4" />
               Add Product
-            </Button>
+            </Button> : null}
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -147,7 +151,7 @@ export const ProductsView = () => {
                 <TableHead>Barcode</TableHead>
                 <TableHead>Product Name</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead className="text-right">Cost Price</TableHead>
+                {owner ? <TableHead className="text-right">Cost Price</TableHead> : null}
                 <TableHead className="text-right">Selling Price</TableHead>
                 <TableHead className="text-center">Tracking</TableHead>
                 <TableHead>Warranty</TableHead>
@@ -162,9 +166,9 @@ export const ProductsView = () => {
                   </TableCell>
                   <TableCell className="font-semibold text-heading">{prod.name}</TableCell>
                   <TableCell className="text-xs">{prod.category}</TableCell>
-                  <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                  {owner ? <TableCell className="text-right font-mono text-xs text-muted-foreground">
                     ${prod.costPrice.toLocaleString()}
-                  </TableCell>
+                  </TableCell> : null}
                   <TableCell className="text-right font-mono font-bold text-heading">
                     ${prod.salePrice.toLocaleString()}
                   </TableCell>
@@ -181,7 +185,7 @@ export const ProductsView = () => {
         </CardContent>
       </Card>
 
-      {showAddModal && (
+      {showAddModal && owner && (
         <StockFormDialog
           eyebrow="Product catalog"
           title="Register new product"

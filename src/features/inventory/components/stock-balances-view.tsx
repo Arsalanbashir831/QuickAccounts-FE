@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useInvoices } from "@/features/sales/invoice-store";
+import { isOwner, useDemoSession } from "@/features/auth/demo-session";
+import { useLocations } from "@/features/settings/location-store";
 import { buildStockBalances, stockTotals, type StockBalance } from "../stock-data";
 import { useTransfers } from "../transfer-store";
 
@@ -16,10 +18,14 @@ export function StockBalancesView({ companyId }: { companyId: string }) {
   const router = useRouter();
   const invoices = useInvoices(companyId);
   const transfers = useTransfers(companyId);
+  const session = useDemoSession();
+  const owner = isOwner(session);
+  const assignedOutlet = useLocations(companyId).find((location) => location.id === session?.locationId)?.name;
   const [search, setSearch] = useState("");
   const [siteFilter, setSiteFilter] = useState("all");
   const [preset, setPreset] = useState<StockPreset>("all");
-  const rows = buildStockBalances(invoices, transfers);
+  const allRows = buildStockBalances(invoices, transfers);
+  const rows = owner ? allRows : allRows.filter((row) => row.location === assignedOutlet);
   const totals = stockTotals(rows);
   const locations = [...new Set(rows.map((row) => row.location))];
   const filtered = rows.filter((row) => {
@@ -28,7 +34,7 @@ export function StockBalancesView({ companyId }: { companyId: string }) {
     const matchesPreset = preset === "all" || (preset === "reserved" ? row.reserved > 0 : row.faulty + row.dead > 0);
     return matchesSearch && matchesLocation && matchesPreset;
   });
-  const openDetails = (row: StockBalance) => router.push(`/c/${encodeURIComponent(companyId)}/stock/${encodeURIComponent(row.sku)}`);
+  const openDetails = (row: StockBalance) => { if (owner) router.push(`/c/${encodeURIComponent(companyId)}/stock/${encodeURIComponent(row.sku)}`); };
   const handleRowClick = (event: MouseEvent<HTMLTableRowElement>, row: StockBalance) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     openDetails(row);
@@ -43,8 +49,8 @@ export function StockBalancesView({ companyId }: { companyId: string }) {
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
         {([
-          { key: "all", label: "Available to Sell", value: totals.available, description: "Across all locations" },
-          { key: "reserved", label: "Reserved for Shipment", value: totals.reserved, description: "Across transfers and invoices" },
+          { key: "all", label: "Available to Sell", value: totals.available, description: owner ? "Across all locations" : "At your assigned outlet" },
+          { key: "reserved", label: "Reserved for Shipment", value: totals.reserved, description: owner ? "Across transfers and invoices" : "For your outlet" },
           { key: "faulty", label: "Total Faulty Stock", value: totals.faulty + totals.dead, description: `${totals.faulty} faulty · ${totals.dead} dead` },
         ] as const).map((metric) => <button
           key={metric.key}
@@ -68,10 +74,10 @@ export function StockBalancesView({ companyId }: { companyId: string }) {
             <TableHeader><TableRow><TableHead>SKU</TableHead><TableHead>Product</TableHead><TableHead>Location</TableHead><TableHead className="text-right">On Hand</TableHead><TableHead className="text-right">Reserved for Shipment</TableHead><TableHead className="text-right">Available to Sell</TableHead><TableHead className="text-right">Faulty/Dead</TableHead></TableRow></TableHeader>
             <TableBody>{filtered.length ? filtered.map((row) => <TableRow
               key={row.id}
-              role="link"
-              tabIndex={0}
+              role={owner ? "link" : undefined}
+              tabIndex={owner ? 0 : undefined}
               aria-label={`View stock details for ${row.name} at ${row.location}`}
-              className="cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary hover:bg-primary/5"
+              className={owner ? "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary hover:bg-primary/5" : ""}
               onClick={(event) => handleRowClick(event, row)}
               onKeyDown={(event) => handleRowKeyDown(event, row)}
             ><TableCell className="font-mono font-bold text-primary">{row.sku}</TableCell><TableCell className="font-semibold text-heading">{row.name}</TableCell><TableCell className="text-sm text-muted-foreground">{row.location}</TableCell><TableCell className="text-right tabular-nums">{row.onHand}</TableCell><TableCell className="text-right tabular-nums">{row.reserved}</TableCell><TableCell className="text-right font-semibold tabular-nums text-heading">{row.available}</TableCell><TableCell className="text-right font-semibold tabular-nums">{row.faulty + row.dead}</TableCell></TableRow>) : <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">No stock matches your filters.</TableCell></TableRow>}</TableBody>
