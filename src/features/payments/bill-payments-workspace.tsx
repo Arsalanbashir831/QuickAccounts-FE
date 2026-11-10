@@ -61,6 +61,7 @@ export const BillPaymentsWorkspace = ({ companyId, direction }: { companyId: str
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("Cash");
+  const [bankName, setBankName] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [formError, setFormError] = useState("");
@@ -91,7 +92,7 @@ export const BillPaymentsWorkspace = ({ companyId, direction }: { companyId: str
   }, [paying]);
 
   const openPayment = (party: PartyRow) => {
-    setPayingId(party.id); setAmount(String(party.balance)); setDate(today()); setMethod("Cash"); setReference(""); setNotes(""); setFormError("");
+    setPayingId(party.id); setAmount(String(party.balance)); setDate(today()); setMethod("Cash"); setBankName(""); setReference(""); setNotes(""); setFormError("");
   };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -100,8 +101,10 @@ export const BillPaymentsWorkspace = ({ companyId, direction }: { companyId: str
     const value = Number(amount);
     if (!date || !Number.isFinite(value) || value <= 0) { setFormError("Enter a date and an amount greater than zero."); return; }
     if (value > paying.balance) { setFormError(`Amount cannot be more than the outstanding balance of ${money(paying.balance)}.`); return; }
+    const bank = bankName.trim();
+    if (method === "Bank transfer" && !bank) { setFormError("Enter the bank name for this transfer."); return; }
     try {
-      recordPayment(companyId, { id: crypto.randomUUID(), reference: reference.trim() || `PAY-${String(Date.now()).slice(-6)}`, direction, partyId: paying.id, partyName: paying.name, date, method, amount: value, notes: notes.trim() });
+      recordPayment(companyId, { id: crypto.randomUUID(), reference: reference.trim() || `PAY-${String(Date.now()).slice(-6)}`, direction, partyId: paying.id, partyName: paying.name, date, method, ...(method === "Bank transfer" ? { bankName: bank } : {}), amount: value, notes: notes.trim() });
       setPayingId(null);
       setNotice(`${text.done}: ${money(value)} ${direction === "send" ? "to" : "from"} ${paying.name}.`);
     } catch {
@@ -144,7 +147,7 @@ export const BillPaymentsWorkspace = ({ companyId, direction }: { companyId: str
       <CardHeader className="border-b"><CardTitle>{text.historyTitle}</CardTitle><CardDescription>Most recent first</CardDescription></CardHeader>
       <CardContent className="p-0"><div className="overflow-x-auto"><Table>
         <TableHeader><TableRow><TableHead>Reference</TableHead><TableHead>Date</TableHead><TableHead>{direction === "send" ? "Supplier" : "Customer"}</TableHead><TableHead>Method</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
-        <TableBody>{history.map((payment) => <TableRow key={payment.id}><TableCell className="font-mono font-semibold text-primary">{payment.reference}</TableCell><TableCell>{displayDate(payment.date)}</TableCell><TableCell className="font-medium">{payment.partyName}</TableCell><TableCell>{payment.method}</TableCell><TableCell className="text-right font-mono font-semibold">{money(payment.amount)}</TableCell></TableRow>)}</TableBody>
+        <TableBody>{history.map((payment) => <TableRow key={payment.id}><TableCell className="font-mono font-semibold text-primary">{payment.reference}</TableCell><TableCell>{displayDate(payment.date)}</TableCell><TableCell className="font-medium">{payment.partyName}</TableCell><TableCell>{payment.method}{payment.bankName ? <span className="block text-xs text-muted-foreground">{payment.bankName}</span> : null}</TableCell><TableCell className="text-right font-mono font-semibold">{money(payment.amount)}</TableCell></TableRow>)}</TableBody>
       </Table></div>{history.length === 0 ? <p className="p-6 text-sm text-muted-foreground">No payments yet.</p> : null}</CardContent>
     </Card>
 
@@ -155,8 +158,9 @@ export const BillPaymentsWorkspace = ({ companyId, direction }: { companyId: str
           <label className="block space-y-1.5 text-sm font-medium">Amount ({currency})<Input required autoFocus min="0.01" step="0.01" max={paying.balance} type="number" value={amount} onChange={(event) => setAmount(event.target.value)} /></label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-1.5 text-sm font-medium">Date<Input required type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
-            <label className="block space-y-1.5 text-sm font-medium">Method<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)}><option>Cash</option><option>Bank transfer</option><option>Cheque</option></select></label>
+            <label className="block space-y-1.5 text-sm font-medium">Method<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)}><option>Cash</option><option>Bank transfer</option></select></label>
           </div>
+          {method === "Bank transfer" ? <label className="block space-y-1.5 text-sm font-medium">Bank name<Input required maxLength={60} value={bankName} onChange={(event) => setBankName(event.target.value)} placeholder="e.g. HBL, Meezan Bank" /></label> : null}
           <label className="block space-y-1.5 text-sm font-medium">Reference <span className="font-normal text-muted-foreground">(optional)</span><Input maxLength={40} value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Auto-generated if empty" /></label>
           <label className="block space-y-1.5 text-sm font-medium">Notes <span className="font-normal text-muted-foreground">(optional)</span><Input maxLength={200} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
           {formError ? <p role="alert" className="text-sm font-medium text-destructive">{formError}</p> : null}

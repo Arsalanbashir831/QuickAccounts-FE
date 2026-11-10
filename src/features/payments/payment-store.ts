@@ -3,7 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 export type PaymentDirection = "send" | "receive";
-export type PaymentMethod = "Cash" | "Bank transfer" | "Cheque";
+export type PaymentMethod = "Cash" | "Bank transfer";
 
 export type PartyPayment = {
   id: string;
@@ -13,6 +13,8 @@ export type PartyPayment = {
   partyName: string;
   date: string;
   method: PaymentMethod;
+  /** Bank used when method is "Bank transfer". */
+  bankName?: string;
   amount: number;
   notes: string;
 };
@@ -20,8 +22,8 @@ export type PartyPayment = {
 export const demoPayments: PartyPayment[] = [
   { id: "demo-pay-1083", reference: "PAY-1083", direction: "receive", partyId: "cust-1", partyName: "Apex Mobiles (Kashif)", date: "2026-10-13", method: "Cash", amount: 84500, notes: "" },
   { id: "demo-pay-1082", reference: "PAY-1082", direction: "receive", partyId: "cust-2", partyName: "Hamza Electronics", date: "2026-10-12", method: "Cash", amount: 42000, notes: "" },
-  { id: "demo-pay-1081", reference: "PAY-1081", direction: "send", partyId: "sup-2", partyName: "Apex Importers", date: "2026-10-12", method: "Bank transfer", amount: 120000, notes: "" },
-  { id: "demo-pay-1080", reference: "PAY-1080", direction: "receive", partyId: "cust-4", partyName: "Tariq Telecom", date: "2026-10-11", method: "Bank transfer", amount: 35000, notes: "" },
+  { id: "demo-pay-1081", reference: "PAY-1081", direction: "send", partyId: "sup-2", partyName: "Apex Importers", date: "2026-10-12", method: "Bank transfer", bankName: "Meezan Bank", amount: 120000, notes: "" },
+  { id: "demo-pay-1080", reference: "PAY-1080", direction: "receive", partyId: "cust-4", partyName: "Tariq Telecom", date: "2026-10-11", method: "Bank transfer", bankName: "HBL", amount: 35000, notes: "" },
   { id: "demo-pay-1079", reference: "PAY-1079", direction: "send", partyId: "sup-1", partyName: "Mumtaz Distributors", date: "2026-10-10", method: "Cash", amount: 27500, notes: "" },
 ];
 
