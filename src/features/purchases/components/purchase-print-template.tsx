@@ -4,9 +4,10 @@ import { useRef } from "react";
 import { Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PurchaseOrder } from "../purchase-store";
+import { formatMoney } from "@/lib/format/money";
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
-const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
+const money = (amount: number) => formatMoney(amount);
 const paymentLabel = { cash: "Cash", bank: "Card / Bank", credit: "Supplier Credit" } as const;
 
 function buildPrintDocument(order: PurchaseOrder) {

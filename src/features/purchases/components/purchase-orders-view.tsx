@@ -11,10 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { usePurchaseOrders, type PurchaseOrder } from "../purchase-store";
 import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { useLocations } from "@/features/settings/location-store";
+import { useMoney } from "@/lib/format/money";
 
-const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 
 export function PurchaseOrdersView({ companyId }: { companyId: string }) {
+  const money = useMoney();
   const router = useRouter();
   const allOrders = usePurchaseOrders(companyId);
   const session = useDemoSession();

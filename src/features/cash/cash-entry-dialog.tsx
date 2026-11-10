@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { accountBalance, addCashTransaction, addCashTransfer, cashAccounts, type CashTransaction } from "./cash-account-store";
+import { useCurrency, useMoney } from "@/lib/format/money";
 
 export type CashEntryMode = "withdraw" | "transfer";
 
@@ -34,6 +35,8 @@ export function CashEntryDialog({
   onClose: () => void;
   onDone: (message: string) => void;
 }) {
+  const money = useMoney();
+  const currency = useCurrency();
   const account = cashAccounts.find((item) => item.id === accountId);
   const balance = accountBalance(accountId, transactions);
   const destinations = cashAccounts.filter((item) => item.id !== accountId);
@@ -50,7 +53,7 @@ export function CashEntryDialog({
     event.preventDefault();
     const value = Number(amount);
     if (!date || !Number.isFinite(value) || value <= 0) { setError("Enter a date and a positive amount."); return; }
-    if (value > balance) { setError(`Amount cannot exceed the available balance of $${balance.toLocaleString("en-US", { maximumFractionDigits: 2 })}.`); return; }
+    if (value > balance) { setError(`Amount cannot exceed the available balance of ${money(balance)}.`); return; }
     if (mode === "transfer") {
       if (!destinationId || destinationId === accountId) { setError("Choose a different destination account."); return; }
       try {
@@ -79,11 +82,11 @@ export function CashEntryDialog({
           <form onSubmit={submit} className="space-y-4">
             <div className="rounded-lg border bg-muted/30 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{account?.name}</p>
-              <p className="mt-1 font-mono text-xl font-bold text-heading">${balance.toLocaleString("en-US", { maximumFractionDigits: 2 })}</p>
+              <p className="mt-1 font-mono text-xl font-bold text-heading">{money(balance)}</p>
               <p className="text-xs text-muted-foreground">Available balance</p>
             </div>
             <label className="block space-y-1.5 text-sm font-medium text-heading">Date<Input required type="date" value={date} onChange={(event) => { setDate(event.target.value); setError(""); }} /></label>
-            <label className="block space-y-1.5 text-sm font-medium text-heading">Amount (USD)<Input required min="0.01" step="0.01" type="number" value={amount} onChange={(event) => { setAmount(event.target.value); setError(""); }} placeholder="0.00" /></label>
+            <label className="block space-y-1.5 text-sm font-medium text-heading">Amount ({currency})<Input required min="0.01" step="0.01" type="number" value={amount} onChange={(event) => { setAmount(event.target.value); setError(""); }} placeholder="0.00" /></label>
             {mode === "transfer" ? <label className="block space-y-1.5 text-sm font-medium text-heading">To account<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-heading" value={destinationId} onChange={(event) => { setDestinationId(event.target.value); setError(""); }}>{destinations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> : null}
             <label className="block space-y-1.5 text-sm font-medium text-heading">Description<Input required value={description} onChange={(event) => { setDescription(event.target.value); setError(""); }} placeholder={mode === "withdraw" ? "What was this money used for?" : "Reason for the transfer"} /></label>
             <label className="block space-y-1.5 text-sm font-medium text-heading">Notes<Input value={notes} onChange={(event) => { setNotes(event.target.value); setError(""); }} placeholder="Optional detail" /></label>

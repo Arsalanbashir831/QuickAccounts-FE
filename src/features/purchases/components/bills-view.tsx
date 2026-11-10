@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useMoney } from "@/lib/format/money";
 
 interface SupplierBill {
   id: string;
@@ -61,6 +62,7 @@ const mockBills: SupplierBill[] = [
 ];
 
 export const BillsView = () => {
+  const money = useMoney();
   const [search, setSearch] = useState("");
 
   const filtered = mockBills.filter(
@@ -114,15 +116,15 @@ export const BillsView = () => {
                 <TableCell className="text-xs text-muted-foreground">{bill.date}</TableCell>
                 <TableCell className="text-xs font-semibold text-heading">{bill.dueDate}</TableCell>
                 <TableCell className="text-right font-mono font-bold text-heading">
-                  ${bill.amount.toLocaleString()}
+                  {money(bill.amount)}
                 </TableCell>
                 <TableCell className="text-right font-mono text-xs">
                   {bill.balance > 0 ? (
                     <span className="font-bold text-destructive">
-                      ${bill.balance.toLocaleString()}
+                      {money(bill.balance)}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">$0</span>
+                    <span className="text-muted-foreground">{money(0)}</span>
                   )}
                 </TableCell>
                 <TableCell className="text-center">

@@ -12,6 +12,7 @@ import { WorkspaceHeader } from "@/components/shell/workspace-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Money } from "@/components/ui/money";
 import { Separator } from "@/components/ui/separator";
 import { ProfitExpenseChart } from "./components/profit-expense-chart";
 import { QuickActions } from "./components/quick-actions";
@@ -19,7 +20,7 @@ import { QuickActions } from "./components/quick-actions";
 const statMetrics = [
   {
     label: "Today's Sales",
-    value: "$482,600",
+    value: 482600,
     note: "18 confirmed invoices",
     badge: "+12.4%",
     badgeTone: "success" as const,
@@ -28,7 +29,7 @@ const statMetrics = [
   },
   {
     label: "Pending to Receive",
-    value: "$345,000",
+    value: 345000,
     note: "7 customer invoices due",
     badge: "4 due today",
     badgeTone: "warning" as const,
@@ -37,7 +38,7 @@ const statMetrics = [
   },
   {
     label: "Pending to Send",
-    value: "$182,500",
+    value: 182500,
     note: "5 supplier bills awaiting pay",
     badge: "2 urgent",
     badgeTone: "danger" as const,
@@ -46,7 +47,7 @@ const statMetrics = [
   },
   {
     label: "Net Cash Position",
-    value: "$1,420,800",
+    value: 1420800,
     note: "Bank accounts & cash drawers",
     badge: "Liquidity OK",
     badgeTone: "neutral" as const,
@@ -59,18 +60,21 @@ const priorityTasks = [
   {
     title: "Receive PO-0382",
     detail: "Mumtaz Distributors · 32 units",
+    amount: 0,
     kind: "Stock",
     href: "stock/purchases",
   },
   {
     title: "Review price exception",
-    detail: "Invoice DOT-1045 · $28,900",
+    detail: "Invoice DOT-1045 · ",
+    amount: 28900,
     kind: "Approval",
     href: "sales?view=invoices",
   },
   {
     title: "Resolve transfer shortage",
     detail: "TR-0198 · 2 units in transit",
+    amount: 0,
     kind: "Exception",
     href: "stock/transfers",
   },
@@ -116,7 +120,7 @@ export const HomeWorkspace = ({ companyId }: { companyId: string }) => (
 
               <div className="mt-3">
                 <CardTitle className="numeric text-2xl font-bold tracking-tight text-heading sm:text-3xl">
-                  {stat.value}
+                  <Money amount={stat.value} />
                 </CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">{stat.note}</p>
               </div>
@@ -157,6 +161,7 @@ export const HomeWorkspace = ({ companyId }: { companyId: string }) => (
                       </p>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {task.detail}
+                        {task.amount ? <Money amount={task.amount} /> : null}
                       </p>
                     </div>
                     <Badge tone="neutral">{task.kind}</Badge>
@@ -185,19 +190,19 @@ export const HomeWorkspace = ({ companyId }: { companyId: string }) => (
             <CardContent className="space-y-3 text-xs">
               <div className="flex items-center justify-between border-b pb-2">
                 <span className="text-muted-foreground">Cash drawer balance</span>
-                <span className="font-semibold text-heading">$94,500</span>
+                <span className="font-semibold text-heading"><Money amount={94500} /></span>
               </div>
               <div className="flex items-center justify-between border-b pb-2">
                 <span className="text-muted-foreground">Bank / Card collections</span>
-                <span className="font-semibold text-heading">$388,100</span>
+                <span className="font-semibold text-heading"><Money amount={388100} /></span>
               </div>
               <div className="flex items-center justify-between border-b pb-2">
                 <span className="text-muted-foreground">Customer returns processed</span>
-                <span className="font-semibold text-heading">$12,000</span>
+                <span className="font-semibold text-heading"><Money amount={12000} /></span>
               </div>
               <div className="flex items-center justify-between pt-1">
                 <span className="font-bold text-heading">Gross Sales (Total)</span>
-                <span className="font-bold text-primary">$482,600</span>
+                <span className="font-bold text-primary"><Money amount={482600} /></span>
               </div>
 
               <div className="pt-3">

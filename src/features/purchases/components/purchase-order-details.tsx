@@ -11,11 +11,12 @@ import { addSerialCodes, pasteSerialCodes } from "@/features/sales/components/se
 import { usePurchaseOrders, writePurchaseOrders, type PurchaseOrder } from "../purchase-store";
 import { PurchasePrintTemplate } from "./purchase-print-template";
 import { isOwner, useDemoSession } from "@/features/auth/demo-session";
+import { useMoney } from "@/lib/format/money";
 
-const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 const subscribeToNothing = () => () => {};
 
 export function PurchaseOrderDetails({ companyId, orderId }: { companyId: string; orderId: string }) {
+  const money = useMoney();
   const orders = usePurchaseOrders(companyId);
   const owner = isOwner(useDemoSession());
   const isHydrated = useSyncExternalStore(subscribeToNothing, () => true, () => false);

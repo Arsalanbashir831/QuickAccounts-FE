@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useMoney } from "@/lib/format/money";
 
 export interface CustomerRecord {
   id: string;
@@ -74,6 +75,7 @@ export const mockCustomers: CustomerRecord[] = [
 ];
 
 export const CustomersView = ({ companyId }: { companyId: string }) => {
+  const money = useMoney();
   const router = useRouter();
   const [customers, setCustomers] = useState<CustomerRecord[]>(mockCustomers);
   const [search, setSearch] = useState("");
@@ -160,13 +162,13 @@ export const CustomersView = ({ companyId }: { companyId: string }) => {
                   <TableCell className="text-xs text-muted-foreground">{c.city}</TableCell>
                   <TableCell className="text-center font-mono text-xs">{c.totalOrders}</TableCell>
                   <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                    ${c.totalSpent.toLocaleString()}
+                    {money(c.totalSpent)}
                   </TableCell>
                   <TableCell className="text-right font-mono font-bold text-heading">
                     {c.balanceDue > 0 ? (
-                      <span className="text-success-foreground">+ ${c.balanceDue.toLocaleString()}</span>
+                      <span className="text-success-foreground">{money(c.balanceDue, { signed: true })}</span>
                     ) : (
-                      <span className="text-success">$0</span>
+                      <span className="text-success">{money(0)}</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs">

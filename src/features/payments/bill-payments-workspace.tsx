@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { mockCustomers } from "@/features/parties/components/customers-view";
 import { mockSuppliers } from "@/features/parties/components/suppliers-view";
 import { demoPayments, recordPayment, useRecordedPayments, type PaymentDirection, type PaymentMethod } from "@/features/payments/payment-store";
+import { useCurrency, useMoney } from "@/lib/format/money";
 
 type PartyRow = { id: string; name: string; contact: string; terms: string; balance: number; ledgerHref: string };
 
@@ -44,7 +45,6 @@ const copy = {
   },
 } as const;
 
-const money = (amount: number) => `$${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 const displayDate = (value: string) => new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
 const today = () => {
   const date = new Date();
@@ -52,6 +52,8 @@ const today = () => {
 };
 
 export const BillPaymentsWorkspace = ({ companyId, direction }: { companyId: string; direction: PaymentDirection }) => {
+  const money = useMoney();
+  const currency = useCurrency();
   const text = copy[direction];
   const recorded = useRecordedPayments(companyId);
   const [search, setSearch] = useState("");
@@ -150,7 +152,7 @@ export const BillPaymentsWorkspace = ({ companyId, direction }: { companyId: str
       <Card role="dialog" aria-modal="true" aria-labelledby="payment-form-title" className="flex h-full max-h-screen w-full max-w-md flex-col overflow-hidden rounded-none shadow-xl sm:rounded-l-xl">
         <CardHeader className="flex-row items-start justify-between border-b"><div><CardTitle id="payment-form-title">{text.formTitle}</CardTitle><CardDescription>{paying.name} · Outstanding {money(paying.balance)}</CardDescription></div><Button variant="ghost" size="icon" aria-label="Close payment form" onClick={() => setPayingId(null)}><X className="size-4" /></Button></CardHeader>
         <CardContent className="overflow-y-auto p-5"><form onSubmit={submit} className="space-y-4">
-          <label className="block space-y-1.5 text-sm font-medium">Amount (USD)<Input required autoFocus min="0.01" step="0.01" max={paying.balance} type="number" value={amount} onChange={(event) => setAmount(event.target.value)} /></label>
+          <label className="block space-y-1.5 text-sm font-medium">Amount ({currency})<Input required autoFocus min="0.01" step="0.01" max={paying.balance} type="number" value={amount} onChange={(event) => setAmount(event.target.value)} /></label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-1.5 text-sm font-medium">Date<Input required type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
             <label className="block space-y-1.5 text-sm font-medium">Method<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)}><option>Cash</option><option>Bank transfer</option><option>Cheque</option></select></label>

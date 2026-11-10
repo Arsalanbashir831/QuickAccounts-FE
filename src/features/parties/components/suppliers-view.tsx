@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useMoney } from "@/lib/format/money";
 
 export interface SupplierRecord {
   id: string;
@@ -52,6 +53,7 @@ export const mockSuppliers: SupplierRecord[] = [
 ];
 
 export const SuppliersView = ({ companyId }: { companyId: string }) => {
+  const money = useMoney();
   const router = useRouter();
   const [search, setSearch] = useState("");
 
@@ -103,9 +105,9 @@ export const SuppliersView = ({ companyId }: { companyId: string }) => {
                 <TableCell className="text-xs font-semibold text-heading">{s.paymentTerms}</TableCell>
                 <TableCell className="text-right font-mono font-bold text-heading">
                   {s.balanceOwed > 0 ? (
-                    <span className="text-destructive">- ${s.balanceOwed.toLocaleString()}</span>
+                    <span className="text-destructive">{money(-s.balanceOwed)}</span>
                   ) : (
-                    <span className="text-muted-foreground">$0</span>
+                    <span className="text-muted-foreground">{money(0)}</span>
                   )}
                 </TableCell>
                 <TableCell className="text-center font-mono font-bold">{s.activeOrders}</TableCell>

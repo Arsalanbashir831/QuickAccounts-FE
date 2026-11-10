@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMoney } from "@/lib/format/money";
 import { cn } from "@/lib/utils";
 
 export interface MonthlyFinanceData {
@@ -57,9 +58,9 @@ export const ProfitExpenseChart = () => {
   const barWidth = Math.min(Math.max(groupWidth * 0.28, 8), 18);
   const barGap = 4;
 
-  const formatUSD = (amount: number) => `$${(amount / 1000).toFixed(0)}k`;
-  const formatFullUSD = (amount: number) =>
-    `$${amount.toLocaleString("en-US")}`;
+  const money = useMoney();
+  const formatUSD = (amount: number) => `${money(amount / 1000, { maximumFractionDigits: 0 })}k`;
+  const formatFullUSD = (amount: number) => money(amount);
 
   const hoveredItem = hoveredIndex !== null ? data[hoveredIndex] : null;
 

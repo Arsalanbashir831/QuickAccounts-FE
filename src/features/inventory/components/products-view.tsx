@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StockFormDialog } from "./stock-form-dialog";
+import { useCurrency, useMoney } from "@/lib/format/money";
 
 interface ProductCatalogItem {
   id: string;
@@ -75,6 +76,8 @@ const mockProducts: ProductCatalogItem[] = [
 ];
 
 export const ProductsView = () => {
+  const money = useMoney();
+  const currency = useCurrency();
   const session = useDemoSession();
   const owner = !session || isOwner(session);
   const [products, setProducts] = useState<ProductCatalogItem[]>(mockProducts);
@@ -167,10 +170,10 @@ export const ProductsView = () => {
                   <TableCell className="font-semibold text-heading">{prod.name}</TableCell>
                   <TableCell className="text-xs">{prod.category}</TableCell>
                   {owner ? <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                    ${prod.costPrice.toLocaleString()}
+                    {money(prod.costPrice)}
                   </TableCell> : null}
                   <TableCell className="text-right font-mono font-bold text-heading">
-                    ${prod.salePrice.toLocaleString()}
+                    {money(prod.salePrice)}
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge tone={prod.tracking === "Serialized" ? "info" : "neutral"}>
@@ -209,8 +212,8 @@ export const ProductsView = () => {
             <section className="space-y-4 border-t pt-6" aria-labelledby="product-pricing-heading">
               <div><h3 id="product-pricing-heading" className="text-sm font-semibold text-heading">Pricing</h3><p className="mt-1 text-sm text-muted-foreground">Default prices can be adjusted when creating a transaction.</p></div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-2 text-sm font-medium text-heading">Cost price <span className="font-normal text-muted-foreground">(USD)</span><Input type="number" value={costPrice} onChange={(event) => setCostPrice(Number(event.target.value) || 0)} className="h-11 text-base tabular-nums" /></label>
-                <label className="block space-y-2 text-sm font-medium text-heading">Selling price <span className="font-normal text-muted-foreground">(USD)</span><Input type="number" value={salePrice} onChange={(event) => setSalePrice(Number(event.target.value) || 0)} className="h-11 text-base font-semibold tabular-nums text-primary" /></label>
+                <label className="block space-y-2 text-sm font-medium text-heading">Cost price <span className="font-normal text-muted-foreground">({currency})</span><Input type="number" value={costPrice} onChange={(event) => setCostPrice(Number(event.target.value) || 0)} className="h-11 text-base tabular-nums" /></label>
+                <label className="block space-y-2 text-sm font-medium text-heading">Selling price <span className="font-normal text-muted-foreground">({currency})</span><Input type="number" value={salePrice} onChange={(event) => setSalePrice(Number(event.target.value) || 0)} className="h-11 text-base font-semibold tabular-nums text-primary" /></label>
               </div>
             </section>
             </div>

@@ -4,6 +4,7 @@ import { CheckCircle2, Printer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { CompanySettings } from "@/features/settings/settings-store";
+import { formatMoney } from "@/lib/format/money";
 
 export interface PosReceiptData {
   reference: string;
@@ -26,7 +27,7 @@ export interface PosReceiptData {
   business: CompanySettings["business"];
 }
 
-const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
+const money = (amount: number) => formatMoney(amount);
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({
   "&": "&amp;",

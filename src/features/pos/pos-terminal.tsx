@@ -40,6 +40,7 @@ import {
   type PosCategory,
   type PosProduct,
 } from "./pos-catalog";
+import { currencySymbol, useCurrency, useMoney } from "@/lib/format/money";
 
 interface CartLine {
   productId: string;
@@ -63,9 +64,10 @@ const formatDate = (date: Date, format: "dd MMM yyyy" | "dd/MM/yyyy" | "yyyy-MM-
   return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 };
 
-const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 
 export const PosTerminal = ({ companyId }: { companyId: string }) => {
+  const money = useMoney();
+  const currency = useCurrency();
   const companySettings = useCompanySettings(companyId);
   const locations = useLocations(companyId);
   const session = useDemoSession();
@@ -569,7 +571,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
               <div className="flex items-center justify-between gap-2">
                 <dt className="text-muted-foreground">Discount</dt>
                 <dd className="flex items-center gap-1">
-                  <span className="text-[0.65rem] font-semibold text-muted-foreground">$</span>
+                  <span className="text-[0.65rem] font-semibold text-muted-foreground">{currencySymbol(currency)}</span>
                   <input
                     type="number"
                     min="0"
@@ -588,7 +590,7 @@ export const PosTerminal = ({ companyId }: { companyId: string }) => {
                 <dd className="font-semibold tabular-nums text-heading">{money(tax)}</dd>
               </div>
             </dl>
-            {discountInvalid ? <p className="mt-1 text-[0.65rem] text-destructive">Discount must be between $0 and the subtotal.</p> : null}
+            {discountInvalid ? <p className="mt-1 text-[0.65rem] text-destructive">Discount must be between {money(0)} and the subtotal.</p> : null}
 
             <div className="mt-4 flex items-end justify-between gap-3 border-t border-border pt-4">
               <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Total to pay</span>

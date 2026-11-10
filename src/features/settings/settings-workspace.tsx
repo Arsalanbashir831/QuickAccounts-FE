@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { currencyName, useCurrency } from "@/lib/format/money";
 import { LocationsView } from "./locations-view";
 import { isSettingsBundleSettings, saveCompanySettings, teamRoles, useCompanySettings, type TeamMemberSetting, type TeamRole } from "./settings-store";
 import { saveLocations, useLocations, type StockLocation } from "./location-store";
@@ -44,6 +45,7 @@ const SaveRow = ({ onSave, label = "Save changes" }: { onSave: () => void; label
 
 function BusinessSettings({ companyId }: SettingsPanelProps) {
   const settings = useCompanySettings(companyId);
+  const currency = useCurrency();
   const locations = useLocations(companyId);
   const [business, setBusiness] = useState(settings.business);
   const [rules, setRules] = useState(settings.rules);
@@ -84,10 +86,10 @@ function BusinessSettings({ companyId }: SettingsPanelProps) {
         <Field label="Email"><Input type="email" maxLength={120} value={business.email} onChange={(event) => setBusiness({ ...business, email: event.target.value })} /></Field>
         <Field label="Business address"><textarea className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" maxLength={240} value={business.address} onChange={(event) => setBusiness({ ...business, address: event.target.value })} /></Field>
         <div className="grid gap-4 content-start">
-          <Field label="Currency"><select disabled className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground" value={business.currency}><option value="USD">USD · US Dollar</option></select></Field>
+          <Field label="Currency"><select disabled className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground" value={currency}><option value={currency}>{currency} · {currencyName(currency)}</option></select></Field>
           <Field label="Time zone"><select disabled className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground" value={business.timeZone}><option value="Asia/Karachi">Pakistan Standard Time · Asia/Karachi</option></select></Field>
           <Field label="Date format"><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={business.dateFormat} onChange={(event) => setBusiness({ ...business, dateFormat: event.target.value as typeof business.dateFormat })}><option value="dd MMM yyyy">13 Oct 2026</option><option value="dd/MM/yyyy">13/10/2026</option><option value="yyyy-MM-dd">2026-10-13</option></select></Field>
-          <p className="text-xs text-muted-foreground">Currency and time zone are fixed by the current demo workspace. Multi-currency support can be enabled with the company backend settings.</p>
+          <p className="text-xs text-muted-foreground">Currency is set from your device region (PKR in Pakistan, USD elsewhere). Time zone is fixed by the current demo workspace. Multi-currency support can be enabled with the company backend settings.</p>
         </div>
       </div>
       <div className="mt-5"><SaveRow onSave={handleSave} /></div>

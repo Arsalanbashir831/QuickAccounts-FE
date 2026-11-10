@@ -6,10 +6,11 @@ import { WorkspaceHeader } from "@/components/shell/workspace-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { accountBalance, cashAccounts, useCashTransactions } from "./cash-account-store";
+import { useMoney } from "@/lib/format/money";
 
-const money = (amount: number) => `$${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 
 export function CashAccountsView({ companyId }: { companyId: string }) {
+  const money = useMoney();
   const transactions = useCashTransactions(companyId);
   const bankAccounts = cashAccounts.filter((account) => account.kind === "Bank");
   const cashDrawers = cashAccounts.filter((account) => account.kind === "Cash");

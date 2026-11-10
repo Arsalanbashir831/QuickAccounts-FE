@@ -1,11 +1,25 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SellPos } from "@/features/sales/components/sell-pos";
+import { resetCurrencyDetection } from "@/lib/format/money";
 
 vi.mock("read-excel-file/browser", () => ({ readSheet: vi.fn(async () => [["Barcode"], ["XLSX-001"], ["XLSX-002"]]) }));
 
-afterEach(cleanup);
+// Pin a non-Pakistan time zone so the display currency (USD) does not depend on the machine running the tests.
+beforeEach(() => {
+  const resolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+  vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (this: Intl.DateTimeFormat) {
+    return { ...resolvedOptions.call(this), timeZone: "UTC" };
+  });
+  resetCurrencyDetection();
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  resetCurrencyDetection();
+});
 
 describe("SellPos", () => {
   it("offers direct cash, card, and bank payment without a received amount", async () => {

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useMoney } from "@/lib/format/money";
 
 interface OrderRecord {
   id: string;
@@ -63,6 +64,7 @@ const mockOrders: OrderRecord[] = [
 ];
 
 export const OrdersView = () => {
+  const money = useMoney();
   const [search, setSearch] = useState("");
 
   const filtered = mockOrders.filter(
@@ -119,7 +121,7 @@ export const OrdersView = () => {
                 <TableCell className="text-xs text-muted-foreground">{order.date}</TableCell>
                 <TableCell className="text-xs font-semibold">{order.itemsCount} units</TableCell>
                 <TableCell className="text-right font-mono font-bold text-heading">
-                  ${order.total.toLocaleString()}
+                  {money(order.total)}
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge

@@ -10,13 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CashEntryDialog, type CashEntryMode } from "./cash-entry-dialog";
 import { accountBalance, cashAccounts, useCashTransactions, type CashTransaction } from "./cash-account-store";
+import { useMoney } from "@/lib/format/money";
 
-const money = (amount: number) => `$${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 const formatDate = (value: string) => new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
 const isMoneyIn = (transaction: CashTransaction) => transaction.type === "Deposit" || transaction.type === "Transfer in";
 const typeTone = (transaction: CashTransaction) => isMoneyIn(transaction) ? "success" : transaction.type === "Withdrawal" ? "warning" : "info";
 
 export function CashAccountDetail({ companyId, accountId }: { companyId: string; accountId: string }) {
+  const money = useMoney();
   const transactions = useCashTransactions(companyId);
   const [mode, setMode] = useState<CashEntryMode | null>(null);
   const [notice, setNotice] = useState("");

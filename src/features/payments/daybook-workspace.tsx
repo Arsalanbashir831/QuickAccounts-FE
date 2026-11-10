@@ -13,6 +13,7 @@ import { accounts as standardAccounts, type Account } from "@/features/accounts/
 import { useInvoices } from "@/features/sales/invoice-store";
 import { usePurchaseOrders } from "@/features/purchases/purchase-store";
 import { useLocations } from "@/features/settings/location-store";
+import { useCurrency, useMoney } from "@/lib/format/money";
 
 type EntryKind = "Sale" | "Payment" | "Expense" | "Purchase" | "Income" | "Manual";
 type Direction = "in" | "out";
@@ -84,12 +85,13 @@ function toISODate(value: string) {
 
 const formatDate = (value: string, options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" }) =>
   new Intl.DateTimeFormat("en-GB", { ...options, timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
-const money = (amount: number) => `$${amount.toLocaleString("en-PK", { maximumFractionDigits: 2 })}`;
 const kindTone = (kind: EntryKind) => kind === "Sale" || kind === "Payment" || kind === "Income" ? "success" : kind === "Expense" ? "warning" : "info";
 
 const noopSubscribe = () => () => {};
 
 export const DaybookWorkspace = ({ companyId, mode }: { companyId: string; mode: "today" | "history" }) => {
+  const money = useMoney();
+  const currency = useCurrency();
   const isToday = mode === "today";
   const todayDate = useSyncExternalStore(noopSubscribe, localISODate, () => "");
   const locations = useLocations(companyId);
@@ -289,7 +291,7 @@ export const DaybookWorkspace = ({ companyId, mode }: { companyId: string; mode:
           <label className="block space-y-1.5 text-sm font-medium">Description<Input required value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What is this entry for?" /></label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-1.5 text-sm font-medium">Chart of accounts<select required className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={accountCode} onChange={(event) => setAccountCode(event.target.value)}><option value="">Select an account</option>{(["Assets", "Liabilities", "Equity", "Income", "Cost of Sales", "Expenses"] as const).map((group) => { const groupAccounts = postingChoices.filter((account) => account.group === group); return groupAccounts.length ? <optgroup key={group} label={group}>{groupAccounts.map((account) => <option key={account.code} value={account.code}>{account.code} · {account.name}</option>)}</optgroup> : null; })}</select></label>
-            <label className="block space-y-1.5 text-sm font-medium">Amount (USD)<Input required min="0.01" step="0.01" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" /></label>
+            <label className="block space-y-1.5 text-sm font-medium">Amount ({currency})<Input required min="0.01" step="0.01" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" /></label>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-1.5 text-sm font-medium">Payment method<select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={method} onChange={(event) => { setMethod(event.target.value as "Cash" | "Bank" | "On account"); setContraCode(""); }}><option value="Cash">Cash</option><option value="Bank" disabled={!bankAccounts.length}>Bank</option><option value="On account">On account</option></select></label>

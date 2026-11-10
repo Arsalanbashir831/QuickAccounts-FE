@@ -12,11 +12,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useInvoices, type InvoiceRecord } from "../invoice-store";
 import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { useLocations } from "@/features/settings/location-store";
+import { useMoney } from "@/lib/format/money";
 
-const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
 const statusTone = (status: InvoiceRecord["status"]) => status === "Paid" ? "success" : status === "Partial" ? "warning" : status === "Overdue" ? "danger" : "neutral";
 
 export function InvoicesView({ companyId }: { companyId: string }) {
+  const money = useMoney();
   const router = useRouter();
   const allInvoices = useInvoices(companyId);
   const session = useDemoSession();

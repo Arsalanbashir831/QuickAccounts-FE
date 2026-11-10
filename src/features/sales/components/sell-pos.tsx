@@ -23,6 +23,7 @@ import { useCompanySettings } from "@/features/settings/settings-store";
 import { InvoicePrintTemplate, type PrintableInvoice } from "./invoice-print-template";
 import { SerialEntryTable } from "./serial-entry-table";
 import { addSerialCodes, pasteSerialCodes } from "./serial-code-utils";
+import { useCurrency, useMoney } from "@/lib/format/money";
 
 type WarrantyUnit = "days" | "months" | "years";
 
@@ -112,6 +113,8 @@ export const SellPos = ({
   onCreate?: (invoice: PrintableInvoice) => void;
   startEmpty?: boolean;
 }) => {
+  const money = useMoney();
+  const currency = useCurrency();
   const locations = useLocations(companyId);
   const session = useDemoSession();
   const owner = !session || isOwner(session);
@@ -338,7 +341,7 @@ export const SellPos = ({
               </div>
               <div className="flex justify-between border-b py-2">
                 <span className="text-muted-foreground">Total Paid:</span>
-                <span className="font-bold text-primary">${confirmedInvoice.total.toLocaleString()}</span>
+                <span className="font-bold text-primary">{money(confirmedInvoice.total)}</span>
               </div>
               <div className="flex justify-between pt-2">
                 <span className="text-muted-foreground">Payment Method:</span>
@@ -466,7 +469,7 @@ export const SellPos = ({
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-heading">
-                      ${item.price.toLocaleString()}
+                      {money(item.price)}
                     </span>
                     <Button size="sm" disabled={cart.some((line) => line.id === item.id && line.qty >= line.stock)} onClick={() => addItem(item)}>
                       <Plus className="size-3.5" />
@@ -520,16 +523,16 @@ export const SellPos = ({
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-heading">
-                          ${(item.price * item.qty).toLocaleString()}
+                          {money(item.price * item.qty)}
                         </p>
-                        <p className="text-xs text-muted-foreground">{item.qty} × ${item.price.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">{item.qty} × {money(item.price)}</p>
                       </div>
                     </div>
 
                     <div className="mt-4 grid gap-5 rounded-lg border bg-muted/20 p-3 sm:p-4 md:grid-cols-2">
                       <div className="space-y-3">
                         <div>
-                          <label htmlFor={`price-${item.id}`} className="mb-1 block text-xs font-semibold text-heading">Invoice unit price (USD)</label>
+                          <label htmlFor={`price-${item.id}`} className="mb-1 block text-xs font-semibold text-heading">Invoice unit price ({currency})</label>
                           <Input
                             id={`price-${item.id}`}
                             type="number"
@@ -716,10 +719,10 @@ export const SellPos = ({
             <div className="space-y-2.5 rounded-lg border bg-muted/30 p-3.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Items Subtotal:</span>
-                <span className="font-semibold text-heading">${subtotal.toLocaleString()}</span>
+                <span className="font-semibold text-heading">{money(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Discount (USD):</span>
+                <span className="text-muted-foreground">Discount ({currency}):</span>
                 <input
                   type="number"
                   min="0"
@@ -731,15 +734,15 @@ export const SellPos = ({
                   onChange={(e) => setDiscount(Number(e.target.value) || 0)}
                 />
               </div>
-              {discount < 0 || discount > subtotal ? <p className="text-xs text-destructive">Discount must be between $0 and the subtotal.</p> : null}
+              {discount < 0 || discount > subtotal ? <p className="text-xs text-destructive">Discount must be between {money(0)} and the subtotal.</p> : null}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Sales Tax ({companySettings.rules.taxRate}%{companySettings.rules.taxInclusive ? ", included" : ""}):</span>
-                <span className="font-semibold text-heading">${tax.toLocaleString()}</span>
+                <span className="font-semibold text-heading">{money(tax)}</span>
               </div>
               <div className="border-t pt-2.5 flex items-center justify-between text-sm">
                 <span className="font-bold text-heading">Net Total:</span>
                 <span className="numeric font-black text-xl text-primary">
-                  ${grandTotal.toLocaleString()}
+                  {money(grandTotal)}
                 </span>
               </div>
             </div>
@@ -787,7 +790,7 @@ export const SellPos = ({
                 size="lg"
                 onClick={handleConfirmSale}
               >
-                {onCreate ? "Create Invoice" : "Confirm Sale"} (${grandTotal.toLocaleString()})
+                {onCreate ? "Create Invoice" : "Confirm Sale"} ({money(grandTotal)})
               </Button>
             </div>
           </CardContent>

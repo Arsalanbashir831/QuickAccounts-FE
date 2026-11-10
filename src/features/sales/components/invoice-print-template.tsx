@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CompanySettings } from "@/features/settings/settings-store";
+import { formatMoney } from "@/lib/format/money";
 
 export interface PrintableInvoice {
   reference: string;
@@ -44,7 +45,7 @@ const paymentLabels: Record<PrintableInvoice["paymentMethod"], string> = {
   credit: "Store Credit",
 };
 
-const money = (amount: number) => `$${amount.toLocaleString("en-PK")}`;
+const money = (amount: number) => formatMoney(amount);
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({
   "&": "&amp;",
