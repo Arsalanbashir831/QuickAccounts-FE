@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { addDays, partyBalances, returnableQuantities, saleKind, saleStatus, todayIso } from "@/domain/ledger";
+import { addDays, partyBalances, returnableQuantities, saleKind, saleStatus, todayIso, unpaidBySale } from "@/domain/ledger";
 import { useBooks } from "@/domain/store";
 import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { PosReceiptDialog, paymentLabel } from "@/features/pos/components/pos-receipt-dialog";
@@ -17,32 +17,34 @@ import { InvoicePrintDialog } from "./components/invoice-print-template";
 import { settlementLabel, settlementOf } from "@/domain/returns";
 import { statusTone } from "./sales-workspace";
 
-export function SaleDetails({ companyId, saleId }: { companyId: string; saleId: string }) {
+export function SaleDetails({ companyId, saleId, autoPrint }: { companyId: string; saleId: string; autoPrint?: "invoice" }) {
   const money = useMoney();
   const formatDate = useDateFormatter(companyId);
   const books = useBooks(companyId);
   const settings = useCompanySettings(companyId);
   const owner = isOwner(useDemoSession());
   const base = `/c/${encodeURIComponent(companyId)}`;
-  const [print, setPrint] = useState<"receipt" | "invoice" | null>(null);
+  const [print, setPrint] = useState<"receipt" | "invoice" | null>(autoPrint ?? null);
 
   const sale = books.sales.find((entry) => entry.id === saleId);
   const returnable = useMemo(() => (sale ? returnableQuantities(books, sale.id) : new Map<string, number>()), [books, sale]);
   const linkedReturns = useMemo(() => books.sales.filter((entry) => entry.lines.some((line) => line.returnOfSaleId === saleId)), [books.sales, saleId]);
   const customer = books.parties.find((party) => party.id === sale?.customerId);
+  const unpaidMap = useMemo(() => unpaidBySale(books), [books]);
   const customerBalance = useMemo(() => (customer ? partyBalances(books).get(customer.id) : undefined), [books, customer]);
 
   if (!sale) {
     return (
       <Card className="mx-auto max-w-md p-8 text-center">
         <p className="font-semibold text-heading">Receipt not found</p>
-        <Button asChild className="mt-4" variant="outline"><Link href={`${base}/sales`}>Back to sales</Link></Button>
+        <Button asChild className="mt-4" variant="outline"><Link href={`${base}/sales/walk-in`}>Back to sales</Link></Button>
       </Card>
     );
   }
 
   const kind = saleKind(sale);
-  const status = saleStatus(sale);
+  const unpaidNow = unpaidMap.get(sale.id) ?? 0;
+  const status = kind === "Sale" && sale.total > sale.amountPaid ? (unpaidNow <= 0 ? "Paid" : unpaidNow < sale.total ? "Partly paid" : "On credit") : saleStatus(sale);
   const canReturn = [...returnable.values()].some((qty) => qty > 0);
   const withinWindow = sale.date >= addDays(todayIso(), -settings.rules.returnDays);
   const originals = [...new Set(sale.lines.map((line) => line.returnOfSaleId).filter(Boolean))].map((id) => books.sales.find((entry) => entry.id === id)).filter(Boolean);
@@ -50,7 +52,7 @@ export function SaleDetails({ companyId, saleId }: { companyId: string; saleId: 
 
   return (
     <div className="workspace-enter space-y-5">
-      <Button asChild variant="ghost" size="sm" className="-ml-2"><Link href={`${base}/sales`}><ArrowLeft className="size-4" />All sales</Link></Button>
+      <Button asChild variant="ghost" size="sm" className="-ml-2"><Link href={sale.channel === "invoice" ? `${base}/sales/wholesale` : `${base}/sales/walk-in`}><ArrowLeft className="size-4" />{sale.channel === "invoice" ? "Wholesale customers" : "Walk-in customers"}</Link></Button>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -68,7 +70,7 @@ export function SaleDetails({ companyId, saleId }: { companyId: string; saleId: 
           {canReturn && kind !== "Return" ? (
             withinWindow || owner ? (
               <Button asChild>
-                <Link href={`${base}/pos?return=${encodeURIComponent(sale.id)}`}><ArrowLeftRight className="size-4" />Return / exchange</Link>
+                <Link href={sale.channel === "invoice" ? `${base}/sales/wholesale/return?invoice=${encodeURIComponent(sale.id)}` : `${base}/pos?return=${encodeURIComponent(sale.id)}`}><ArrowLeftRight className="size-4" />{sale.channel === "invoice" ? "Wholesale return" : "Return / exchange"}</Link>
               </Button>
             ) : <Button disabled><ArrowLeftRight className="size-4" />Return window closed</Button>
           ) : null}
@@ -143,7 +145,8 @@ export function SaleDetails({ companyId, saleId }: { companyId: string; saleId: 
                 {accountName ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Account</dt><dd>{accountName}</dd></div> : null}
                 <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{sale.amountPaid < 0 ? "Refunded" : "Paid now"}</dt><dd className="tabular-nums">{money(Math.abs(sale.amountPaid))}</dd></div>
                 {sale.tendered !== undefined ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Cash received / change</dt><dd className="tabular-nums">{money(sale.tendered)} / {money(sale.tendered - sale.amountPaid)}</dd></div> : null}
-                {sale.total - sale.amountPaid > 0 ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Added to khata</dt><dd className="font-semibold tabular-nums text-destructive">{money(sale.total - sale.amountPaid)}</dd></div> : null}
+                {sale.total - sale.amountPaid > 0 ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Added to khata</dt><dd className="font-semibold tabular-nums">{money(sale.total - sale.amountPaid)}</dd></div> : null}
+                {sale.total - sale.amountPaid > 0 ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Still unpaid</dt><dd className="font-semibold tabular-nums text-destructive">{money(unpaidNow)}</dd></div> : null}
                 {sale.dueDate ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Due</dt><dd>{formatDate(sale.dueDate)}</dd></div> : null}
               </dl>
             </CardContent>

@@ -502,3 +502,29 @@ export function lowStock(books: Pick<Books, "styles">, stock: Map<string, number
   }
   return rows.sort((a, b) => a.qty - b.qty || a.style.name.localeCompare(b.style.name));
 }
+
+/**
+ * What is still unpaid on each credit sale, per customer.
+ * Customers pay against their khata, not a specific invoice, so payments,
+ * credit notes and advances are applied to the oldest unpaid invoices first.
+ * The amounts add up to the customer's balance (ignoring any opening balance).
+ */
+export function unpaidBySale(books: Pick<Books, "parties" | "sales" | "moneyEntries">): Map<string, number> {
+  const unpaid = new Map<string, number>();
+  for (const party of books.parties) {
+    if (party.kind !== "customer") continue;
+    const sales = books.sales.filter((sale) => sale.customerId === party.id).sort((a, b) => (a.date === b.date ? a.number.localeCompare(b.number) : a.date.localeCompare(b.date)));
+    const charges = sales.filter((sale) => sale.total - sale.amountPaid > 0).map((sale) => ({ id: sale.id, left: sale.total - sale.amountPaid }));
+    // Credits: payments received, plus returns / overpayments that reduced the balance.
+    let credit = -Math.min(0, party.openingBalance)
+      + books.moneyEntries.filter((entry) => entry.kind === "customer-receipt" && entry.partyId === party.id).reduce((sum, entry) => sum + entry.amount, 0)
+      + sales.reduce((sum, sale) => sum + Math.max(0, sale.amountPaid - sale.total), 0);
+    credit -= Math.max(0, party.openingBalance); // opening balance is the oldest debt
+    for (const charge of charges) {
+      const applied = Math.max(0, Math.min(charge.left, credit));
+      credit -= applied;
+      unpaid.set(charge.id, charge.left - applied);
+    }
+  }
+  return unpaid;
+}

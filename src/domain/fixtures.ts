@@ -97,8 +97,8 @@ export const fixtureParties: Party[] = [
   { id: "sup-karachi", kind: "supplier", name: "Karachi Sole Traders", phone: "0321-4455667", city: "Karachi", openingBalance: 0 },
   { id: "sup-sialkot", kind: "supplier", name: "Sialkot Leather Works", phone: "0333-7788990", city: "Sialkot", openingBalance: 0 },
   { id: "sup-kids", kind: "supplier", name: "Little Steps Wholesale", phone: "0345-2233445", city: "Faisalabad", openingBalance: 0 },
-  { id: "cus-alnoor", kind: "customer", name: "Al-Noor Shoe Corner", phone: "0301-5566778", city: "Gujranwala", openingBalance: 0, creditAllowed: true, notes: "Buys sneakers in size runs. 15-day credit." },
-  { id: "cus-fashionhub", kind: "customer", name: "Fashion Hub Gulberg", phone: "0322-9988776", city: "Lahore", openingBalance: 0, creditAllowed: true },
+  { id: "cus-alnoor", kind: "customer", name: "Al-Noor Shoe Corner", phone: "0301-5566778", city: "Gujranwala", openingBalance: 0, creditAllowed: true, wholesale: true, notes: "Buys sneakers in size runs. 15-day credit." },
+  { id: "cus-fashionhub", kind: "customer", name: "Fashion Hub Gulberg", phone: "0322-9988776", city: "Lahore", openingBalance: 0, creditAllowed: true, wholesale: true },
   { id: "cus-kamran", kind: "customer", name: "Kamran Ali", phone: "0312-3344556", city: "Lahore", openingBalance: 0, creditAllowed: true, notes: "Regular customer, monthly khata." },
   { id: "cus-sana", kind: "customer", name: "Sana Tariq", phone: "0308-6677889", city: "Lahore", openingBalance: 0 },
 ];

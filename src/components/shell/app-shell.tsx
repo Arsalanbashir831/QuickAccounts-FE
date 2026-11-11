@@ -44,21 +44,48 @@ export const AppShell = ({ companyId, children }: AppShellProps) => {
           const href = `/c/${companyId}/${item.slug}`;
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
           const Icon = item.icon;
+          const children = item.children?.filter((child) => owner || child.cashier) ?? [];
           return (
-            <Link
-              key={item.slug}
-              href={href}
-              onClick={() => setIsMenuOpen(false)}
-              className={cn(
-                "group flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-[#ea580c]/15 text-[#ff802b] shadow-[inset_3.5px_0_0_#ea580c] font-semibold [&>svg]:text-[#ff802b]"
-                  : "text-white/70 hover:bg-white/8 hover:text-white [&>svg]:text-white/70 hover:[&>svg]:text-white",
-              )}
-            >
-              <Icon aria-hidden="true" className="size-[1.05rem]" strokeWidth={isActive ? 2.2 : 1.8} />
-              <span>{item.label}</span>
-            </Link>
+            <div key={item.slug}>
+              <Link
+                href={children[0] ? `/c/${companyId}/${children[0].slug}` : href}
+                onClick={() => setIsMenuOpen(false)}
+                aria-current={isActive && !children.length ? "page" : undefined}
+                className={cn(
+                  "group flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? children.length
+                      ? "text-[#ff802b] font-semibold [&>svg]:text-[#ff802b]"
+                      : "bg-[#ea580c]/15 text-[#ff802b] shadow-[inset_3.5px_0_0_#ea580c] font-semibold [&>svg]:text-[#ff802b]"
+                    : "text-white/70 hover:bg-white/8 hover:text-white [&>svg]:text-white/70 hover:[&>svg]:text-white",
+                )}
+              >
+                <Icon aria-hidden="true" className="size-[1.05rem]" strokeWidth={isActive ? 2.2 : 1.8} />
+                <span>{item.label}</span>
+              </Link>
+              {children.length && isActive ? (
+                <div className="ml-[1.35rem] mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
+                  {children.map((child) => {
+                    const childHref = `/c/${companyId}/${child.slug}`;
+                    const childActive = pathname === childHref || pathname.startsWith(`${childHref}/`);
+                    return (
+                      <Link
+                        key={child.slug}
+                        href={childHref}
+                        aria-current={childActive ? "page" : undefined}
+                        onClick={() => setIsMenuOpen(false)}
+                        className={cn(
+                          "flex min-h-9 items-center rounded-md px-3 py-1.5 text-sm transition-colors",
+                          childActive ? "bg-[#ea580c]/15 font-semibold text-[#ff802b] shadow-[inset_3px_0_0_#ea580c]" : "text-white/60 hover:bg-white/8 hover:text-white",
+                        )}
+                      >
+                        {child.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </nav>

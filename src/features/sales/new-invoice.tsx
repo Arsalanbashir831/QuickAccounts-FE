@@ -34,9 +34,10 @@ export function NewInvoice({ companyId }: { companyId: string }) {
   const session = useDemoSession();
   const base = `/c/${encodeURIComponent(companyId)}`;
   const stock = useMemo(() => stockLevels(books), [books]);
-  const customers = books.parties.filter((party) => party.kind === "customer");
+  // Wholesale buyers first, then any other saved customer.
+  const customers = books.parties.filter((party) => party.kind === "customer").sort((a, b) => Number(Boolean(b.wholesale)) - Number(Boolean(a.wholesale)));
 
-  const [customerId, setCustomerId] = useState(customers.find((party) => party.creditAllowed)?.id ?? "");
+  const [customerId, setCustomerId] = useState(customers.find((party) => party.wholesale)?.id ?? "");
   const [styleId, setStyleId] = useState("");
   const [grid, setGrid] = useState<Record<string, number>>({});
   const [rate, setRate] = useState("");
@@ -100,7 +101,7 @@ export function NewInvoice({ companyId }: { companyId: string }) {
 
   return (
     <div className="workspace-enter space-y-5">
-      <Button asChild variant="ghost" size="sm" className="-ml-2"><Link href={`${base}/sales`}><ArrowLeft className="size-4" />Sales</Link></Button>
+      <Button asChild variant="ghost" size="sm" className="-ml-2"><Link href={`${base}/sales/wholesale`}><ArrowLeft className="size-4" />Wholesale customers</Link></Button>
       <WorkspaceHeader eyebrow="Sales" title="Wholesale invoice" description="Sell size runs to other shops or regular buyers at a trade price. Unpaid amounts go on their khata." />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(20rem,1fr)] xl:items-start">

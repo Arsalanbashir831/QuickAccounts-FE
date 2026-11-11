@@ -21,7 +21,7 @@ test("owner signs in, sells a size at the POS and sees it in sales", async ({ pa
   const title = await receipt.getAttribute("aria-label");
   await receipt.getByRole("button", { name: "Done" }).click();
 
-  await page.goto("/c/demo-company/sales?view=sales");
+  await page.goto("/c/demo-company/sales/walk-in?view=sales");
   await expect(page.getByRole("link", { name: title!.replace("Receipt ", "") })).toBeVisible();
 });
 
@@ -105,4 +105,28 @@ test("exchange for any cheaper product: shop gives back the difference", async (
   await page.screenshot({ path: "test-results/exchange-cheaper.png", fullPage: true });
   await page.getByRole("button", { name: "Give back Rs 4,701 & complete" }).click();
   await expect(page.getByRole("dialog", { name: /Receipt KF-/ }).getByText(/refund Rs 4,701/)).toBeVisible();
+});
+
+test("wholesale return: credit note against an invoice goes on the shop's khata", async ({ page }) => {
+  await page.goto("/access");
+  await page.getByRole("button", { name: "Use owner@kadam.demo" }).click();
+  await page.getByRole("button", { name: /^Sign in/ }).click();
+  await page.waitForURL(/home/);
+
+  await page.getByRole("link", { name: "Sales & Returns" }).click();
+  await expect(page.getByRole("link", { name: "Walk-in Customers" })).toBeVisible();
+  await page.getByRole("link", { name: "Wholesale Customers" }).click();
+  await expect(page.getByRole("heading", { name: "Wholesale customers" })).toBeVisible();
+  await page.screenshot({ path: "test-results/wholesale-list.png", fullPage: true });
+
+  await page.getByRole("link", { name: "Wholesale return" }).click();
+  await page.getByRole("combobox", { name: "Shop" }).selectOption("cus-alnoor");
+  await page.getByRole("button", { name: /pairs can come back/ }).first().click();
+  await page.getByRole("button", { name: "Return all" }).click();
+  await expect(page.getByText("Credit to shop")).toBeVisible();
+  await page.screenshot({ path: "test-results/wholesale-return.png", fullPage: true });
+  await page.getByRole("button", { name: /Save & print credit note/ }).click();
+  await expect(page.getByRole("dialog", { name: /Print KF-/ })).toBeVisible();
+  const html = await page.getByTitle(/Invoice KF-/).getAttribute("srcdoc");
+  expect(html).toContain("Credit note");
 });

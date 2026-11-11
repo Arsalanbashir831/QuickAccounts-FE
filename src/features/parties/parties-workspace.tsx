@@ -86,6 +86,7 @@ export function PartiesWorkspace({ companyId, view }: { companyId: string; view:
                 <TableRow key={party.id}>
                   <TableCell>
                     <Link href={`${base}/parties/${party.id}`} className="font-semibold text-heading hover:text-primary">{party.name}</Link>
+                    {party.kind === "customer" && party.wholesale ? <Badge className="ml-2 px-1.5 py-0 text-[0.6rem]">Wholesale</Badge> : null}
                     {party.kind === "customer" && party.creditAllowed ? <Badge tone="info" className="ml-2 px-1.5 py-0 text-[0.6rem]">Khata</Badge> : null}
                   </TableCell>
                   <TableCell className="text-sm">{party.phone ?? "—"}</TableCell>
@@ -113,13 +114,14 @@ export function PartyDialog({ companyId, kind, party, onClose }: { companyId: st
   const [city, setCity] = useState(party?.city ?? "");
   const [opening, setOpening] = useState(party ? String(party.openingBalance) : "");
   const [credit, setCredit] = useState(party?.creditAllowed ?? kind === "customer");
+  const [wholesale, setWholesale] = useState(party?.wholesale ?? false);
   const [notes, setNotes] = useState(party?.notes ?? "");
   const [error, setError] = useState("");
   const save = () => {
     if (!name.trim()) return setError("Enter a name.");
     saveParty(companyId, {
       id: party?.id ?? newId(kind === "customer" ? "cus" : "sup"), kind, name: name.trim(), phone: phone.trim() || undefined, city: city.trim() || undefined,
-      openingBalance: Math.round(Number(opening) || 0), creditAllowed: kind === "customer" ? credit : undefined, notes: notes.trim() || undefined,
+      openingBalance: Math.round(Number(opening) || 0), creditAllowed: kind === "customer" ? credit : undefined, wholesale: kind === "customer" ? wholesale : undefined, notes: notes.trim() || undefined,
     });
     toast.success(party ? "Saved" : `${name} added`);
     onClose();
@@ -133,6 +135,7 @@ export function PartyDialog({ companyId, kind, party, onClose }: { companyId: st
         <Field label="City"><Input value={city} onChange={(event) => setCity(event.target.value)} /></Field>
         <Field label="Opening balance" hint={kind === "customer" ? "What they already owed you before" : "What you already owed them before"} className="sm:col-span-2"><Input type="number" value={opening} placeholder="0" onChange={(event) => setOpening(event.target.value)} /></Field>
         {kind === "customer" ? <label className="flex items-center gap-2 text-sm text-heading sm:col-span-2"><input type="checkbox" className="size-4 accent-primary" checked={credit} onChange={(event) => setCredit(event.target.checked)} />Allow khata (buy now, pay later)</label> : null}
+        {kind === "customer" ? <label className="flex items-center gap-2 text-sm text-heading sm:col-span-2"><input type="checkbox" className="size-4 accent-primary" checked={wholesale} onChange={(event) => setWholesale(event.target.checked)} />Wholesale buyer (another shop buying size runs)</label> : null}
         <Field label="Notes" className="sm:col-span-2"><Textarea rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} /></Field>
       </div>
     </FormDialog>

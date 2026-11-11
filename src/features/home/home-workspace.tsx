@@ -84,7 +84,7 @@ export const HomeWorkspace = ({ companyId }: { companyId: string }) => {
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div><CardTitle>Latest receipts</CardTitle><CardDescription>Sales, returns and exchanges</CardDescription></div>
-        <Button asChild size="sm" variant="outline"><Link href={`${base}/sales`}>All sales</Link></Button>
+        <Button asChild size="sm" variant="outline"><Link href={`${base}/sales/walk-in`}>All receipts</Link></Button>
       </CardHeader>
       <CardContent className="p-0">
         <ul className="divide-y border-t">

@@ -18,11 +18,11 @@ describe("demo access", () => {
 
   it("keeps money, purchases, reports and settings owner only", () => {
     const [owner, cashier] = demoAccounts;
-    for (const path of ["reports", "money", "purchases", "purchases/new", "parties", "settings", "sales/new", "products/new", "products/stride-runner/edit"]) {
+    for (const path of ["reports", "money", "purchases", "purchases/new", "parties", "settings", "sales/wholesale", "sales/wholesale/new", "sales/wholesale/return", "products/new", "products/stride-runner/edit"]) {
       expect(canOpenPath(owner, `/c/demo-company/${path}`, "demo-company")).toBe(true);
       expect(canOpenPath(cashier, `/c/demo-company/${path}`, "demo-company")).toBe(false);
     }
-    for (const path of ["home", "pos", "sales", "sales/sale-1", "products", "products/stride-runner", "stock"]) {
+    for (const path of ["home", "pos", "sales", "sales/walk-in", "sales/sale-1", "products", "products/stride-runner", "stock"]) {
       expect(canOpenPath(cashier, `/c/demo-company/${path}`, "demo-company")).toBe(true);
     }
     expect(canOpenPath(cashier, "/c/other-company/sales", "demo-company")).toBe(false);

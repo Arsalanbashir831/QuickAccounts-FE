@@ -80,6 +80,8 @@ export interface Party {
   openingBalance: number;
   /** Customers only: allowed to buy on credit (khata). */
   creditAllowed?: boolean;
+  /** Customers only: another shop or reseller buying size runs at trade prices. */
+  wholesale?: boolean;
   notes?: string;
 }
 

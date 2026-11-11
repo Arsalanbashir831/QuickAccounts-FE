@@ -3,13 +3,19 @@
  * workspaces (to render tabs). Kept out of "use client" modules on purpose:
  * values exported from client modules are not usable on the server.
  */
-export const salesViews = [
-  { value: "all", label: "All" },
+export const walkInViews = [
+  { value: "all", label: "All receipts" },
   { value: "sales", label: "Sales" },
   { value: "returns", label: "Returns & exchanges" },
-  { value: "credit", label: "On khata" },
 ] as const;
-export type SalesView = (typeof salesViews)[number]["value"];
+export type WalkInView = (typeof walkInViews)[number]["value"];
+
+export const wholesaleViews = [
+  { value: "invoices", label: "Invoices" },
+  { value: "returns", label: "Returns (credit notes)" },
+  { value: "unpaid", label: "Unpaid" },
+] as const;
+export type WholesaleView = (typeof wholesaleViews)[number]["value"];
 
 export const stockViews = [
   { value: "grid", label: "Size grid" },

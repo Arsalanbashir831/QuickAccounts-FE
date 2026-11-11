@@ -89,3 +89,32 @@ describe("return & exchange settlement", () => {
     expect(profitAndLoss(books, "2000-01-01", "2100-01-01").stockLoss).toBe(runner.cost);
   });
 });
+
+describe("wholesale khata", () => {
+  it("applies payments and credit notes to the oldest invoices first", async () => {
+    const { unpaidBySale } = await import("@/domain/ledger");
+    const books = shop();
+    const alnoor = fixtureParties.find((party) => party.id === "cus-alnoor")!;
+    const first = doc(books, { customer: alnoor, channel: "invoice", method: "credit", amountPaid: 0, lines: [cartLine(runner, runner42, 2, 5000)] });
+    const second = doc(books, { customer: alnoor, channel: "invoice", method: "credit", amountPaid: 0, lines: [cartLine(runner, runner43, 2, 5000)] });
+    books.moneyEntries = [{ id: "r1", date: first.date, kind: "customer-receipt", amount: 6000, partyId: alnoor.id, toAccountId: "meezan" }];
+    // Credit note: one pair back from the second invoice, on khata
+    doc(books, { customer: alnoor, channel: "invoice", method: "credit", amountPaid: 0, lines: [{ ...second.lines[0], qty: -1, returnOfSaleId: second.id }] });
+
+    const unpaid = unpaidBySale(books);
+    expect(unpaid.get(first.id)).toBe(0); // 10,000 − (6,000 paid + 4,000 of the 5,000 credit)
+    expect(unpaid.get(second.id)).toBe(9000);
+    expect(partyBalances(books).get(alnoor.id)).toBe(9000);
+  });
+});
+
+it("demo data: invoice unpaid amounts add up to each customer's balance", async () => {
+  const { generateSeed } = await import("@/domain/seed");
+  const { unpaidBySale } = await import("@/domain/ledger");
+  const books: Books = { styles: fixtureStyles, parties: fixtureParties, accounts: fixtureAccounts, ...generateSeed("2026-11-11") };
+  const unpaid = unpaidBySale(books);
+  for (const party of fixtureParties.filter((entry) => entry.kind === "customer")) {
+    const sum = books.sales.filter((sale) => sale.customerId === party.id).reduce((total, sale) => total + (unpaid.get(sale.id) ?? 0), 0);
+    expect(sum).toBe(Math.max(0, partyBalances(books).get(party.id) ?? 0));
+  }
+});

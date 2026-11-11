@@ -76,6 +76,6 @@ export function canOpenPath(session: DemoSession, pathname: string, companyId: s
   if (!pathname.startsWith(base)) return false;
   if (isOwner(session)) return true;
   const path = pathname.slice(base.length);
-  return path === "home" || path === "pos" || path === "sales" || (/^sales\/[^/]+$/.test(path) && path !== "sales/new") ||
+  return path === "home" || path === "pos" || path === "sales" || path === "sales/walk-in" || (/^sales\/[^/]+$/.test(path) && path !== "sales/wholesale") ||
     path === "products" || (/^products\/[^/]+$/.test(path) && path !== "products/new") || path === "stock";
 }
