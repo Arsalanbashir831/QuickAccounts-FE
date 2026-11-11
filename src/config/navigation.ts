@@ -1,67 +1,32 @@
 import {
   Boxes,
   ChartNoAxesCombined,
-  BookOpenCheck,
-  CreditCard,
-  ContactRound,
+  Footprints,
   House,
-  Landmark,
+  ReceiptText,
   Settings,
-  ShoppingCart,
-  Store,
+  Truck,
+  UsersRound,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-
-export type NavigationChild = Readonly<{
-  label: string;
-  slug: string;
-}>;
 
 export type NavigationItem = Readonly<{
   label: string;
   slug: string;
   icon: LucideIcon;
-  children?: readonly NavigationChild[];
+  /** Visible to the cashier role as well as the owner. */
+  cashier?: boolean;
 }>;
 
 export const navigation: readonly NavigationItem[] = [
-  { label: "Home", slug: "home", icon: House },
-  { label: "Sales", slug: "sales", icon: ShoppingCart },
-  {
-    label: "Stock",
-    slug: "stock",
-    icon: Boxes,
-    children: [
-      { label: "Purchase", slug: "stock/purchases" },
-      { label: "Transfer", slug: "stock/transfers" },
-      { label: "Activity", slug: "stock/activity" },
-      { label: "Products", slug: "stock/products" },
-    ],
-  },
-  { label: "Stores & Warehouses", slug: "locations", icon: Store },
-  {
-    label: "Bill Payments",
-    slug: "bill-payments",
-    icon: CreditCard,
-    children: [
-      { label: "Send Payments", slug: "bill-payments/send" },
-      { label: "Receive Payments", slug: "bill-payments/receive" },
-    ],
-  },
-  { label: "Staff & Salaries", slug: "staff-salaries", icon: ContactRound },
-  {
-    label: "Daybook Entry",
-    slug: "daybook",
-    icon: BookOpenCheck,
-    children: [
-      { label: "Today Entry", slug: "daybook/today" },
-      { label: "Daybook History", slug: "daybook/history" },
-    ],
-  },
-  { label: "Cash Accounts", slug: "cash-accounts", icon: Wallet },
-  { label: "Chart of Accounts", slug: "accounts", icon: Landmark },
-  { label: "Ledger", slug: "contacts", icon: ContactRound },
-  { label: "Profit & Loss Statement", slug: "reports", icon: ChartNoAxesCombined },
+  { label: "Home", slug: "home", icon: House, cashier: true },
+  { label: "Sales & Returns", slug: "sales", icon: ReceiptText, cashier: true },
+  { label: "Products", slug: "products", icon: Footprints, cashier: true },
+  { label: "Stock", slug: "stock", icon: Boxes, cashier: true },
+  { label: "Purchases", slug: "purchases", icon: Truck },
+  { label: "Customers & Suppliers", slug: "parties", icon: UsersRound },
+  { label: "Money", slug: "money", icon: Wallet },
+  { label: "Reports", slug: "reports", icon: ChartNoAxesCombined },
   { label: "Settings", slug: "settings", icon: Settings },
 ];

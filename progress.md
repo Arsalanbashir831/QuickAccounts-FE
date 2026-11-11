@@ -1,27 +1,28 @@
 # Implementation progress
 
-Updated: 08 October 2026
+Updated: 11 November 2026
 
-## Completed
+## Footwear edition (branch `footwear-store`)
 
-- Step 00: repository baseline inspected; backend gaps recorded.
-- Step 01: Next.js 16, strict TypeScript, lint, Vitest and Playwright configuration created.
-- Step 02: neutral semantic token system and core local UI primitives created.
-- Step 03: Access plus all nine workspace routes created with lifecycle boundaries.
-- Step 05 foundation: company-keyed client query runtime created; real session bootstrap remains pending.
-- Step 06: responsive app shell, company/location context presentation and navigation created.
-- Step 07 foundation: five shared layouts, record table, editor frame, task panel and feedback states created.
-- Step 08 preview: Chart of Accounts group/list/form composition and local Zod validation created.
+The app was converted from a multi-outlet electronics distributor (IMEI serials,
+warranty, transfers) to a single-store footwear shop for startups.
 
-## Pending backend evidence
+- `src/domain/` — framework-free core: types, size × colour variant catalog,
+  bill pricing, sale builder, and `ledger.ts`, which derives stock, cash/bank
+  balances, customer/supplier khata and profit & loss from documents.
+  `store.ts` persists documents in localStorage (swap for API calls later).
+- Demo shop "Kadam Footwear": 15 fictional styles, ~4 months of generated,
+  internally consistent history (`seed.ts`).
+- Screens: Home, POS (size picker, scan, returns/exchanges, cash change, khata),
+  Sales & returns, Wholesale invoice, Products (style editor, variants, size
+  sell-through), Stock (size grid, low stock, count/adjust, history),
+  Purchases (size-run entry, receive), Customers & suppliers (khata, WhatsApp
+  reminder), Money (cashbook, expenses, transfers, owner in/out), Reports
+  (P&L, day close, styles, sizes), Settings (shop, team, rules, backup/reset).
+- Roles: Owner (everything) and Cashier (POS, sales, products without cost, stock).
 
-- Current OpenAPI export and endpoint ownership
-- Authentication, cookie and CSRF behavior
-- Tenant/company bootstrap response
-- Permission vocabulary and site scope
-- Idempotency, revision and command-reconciliation guarantees
-- Financial, stock, serial, returns and report contracts
+## Next
 
-## Next implementation slice
-
-Connect session bootstrap and one verified accounts read, then replace the Chart of Accounts fixture adapter with the verified Django adapter and add contract tests.
+- Backend: replace `src/domain/store.ts` with Django API adapters; keep `ledger.ts`
+  as the reference for server-side calculations.
+- Barcode label printing; per-cashier shift open/close.

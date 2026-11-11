@@ -1,34 +1,39 @@
 import { expect, test } from "@playwright/test";
 
-test("signs in as owner and opens the demo workspace", async ({ page }) => {
-  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+test("owner signs in, sells a size at the POS and sees it in sales", async ({ page }) => {
   await page.goto("/access");
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Every sale, unit and payment stays connected." })).toHaveCSS("color", "rgb(255, 255, 255)");
-  await page.getByRole("button", { name: "Copy owner@dotcode.demo" }).click();
-  await expect(page.getByRole("status")).toHaveText("owner@dotcode.demo copied");
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("owner@dotcode.demo");
-  await page.getByRole("button", { name: "Use owner@dotcode.demo" }).click();
+  await page.getByRole("button", { name: "Use owner@kadam.demo" }).click();
   await page.getByRole("button", { name: /^Sign in/ }).click();
-  await expect(page.getByRole("heading", { name: "Good morning" })).toBeVisible();
+  await expect(page.getByText("Sales today")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Customers & Suppliers" })).toBeVisible();
+
+  await page.goto("/c/demo-company/pos");
+  await page.getByRole("button", { name: /Stride Runner Pro/ }).first().click();
+  const picker = page.getByRole("dialog", { name: "Stride Runner Pro" });
+  await picker.getByRole("button", { name: /^42/ }).click();
+  await picker.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByText("1 item", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Exact" }).click();
+  await page.getByRole("button", { name: /^Charge/ }).click();
+  const receipt = page.getByRole("dialog", { name: /Receipt KF-/ });
+  await expect(receipt).toBeVisible();
+  const title = await receipt.getAttribute("aria-label");
+  await receipt.getByRole("button", { name: "Done" }).click();
+
+  await page.goto("/c/demo-company/sales?view=sales");
+  await expect(page.getByRole("link", { name: title!.replace("Receipt ", "") })).toBeVisible();
 });
 
-test("outlet manager can work in their outlet but cannot open accounting", async ({ page }) => {
+test("cashier can sell and check stock but not open money or reports", async ({ page }) => {
   await page.goto("/access");
-  await page.getByRole("button", { name: "Use manager@dotcode.demo" }).click();
+  await page.getByRole("button", { name: "Use cashier@kadam.demo" }).click();
   await page.getByRole("button", { name: /^Sign in/ }).click();
-  await expect(page.getByRole("heading", { name: /Welcome, Outlet Manager/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Welcome, Outlet Manager/ })).toHaveCSS("color", "rgb(255, 255, 255)");
-  await expect(page.getByRole("link", { name: "Chart of Accounts" })).toHaveCount(0);
-  await page.goto("/c/demo-company/accounts");
+  await expect(page.getByRole("link", { name: /Open POS/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Money" })).toHaveCount(0);
+  await page.goto("/c/demo-company/money");
   await expect(page.getByRole("heading", { name: "This area is for the owner" })).toBeVisible();
-  await page.goto("/c/demo-company/sales/new");
-  await expect(page.getByRole("heading", { name: "New Invoice" })).toBeVisible();
-  await expect(page.getByRole("combobox", { name: "Selling from outlet or warehouse" })).toHaveValue("Main Outlet");
-  await expect(page.getByRole("combobox", { name: "Selling from outlet or warehouse" })).toBeDisabled();
-  await page.goto("/c/demo-company/stock/products");
-  await expect(page.getByRole("heading", { name: "Stock Sheet" })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Cost Price" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Add Product" })).toHaveCount(0);
-  await expect(page.getByRole("row", { name: /Main Warehouse/ })).toHaveCount(0);
+  await page.goto("/c/demo-company/products");
+  await expect(page.getByRole("columnheader", { name: "Cost" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Add style" })).toHaveCount(0);
 });

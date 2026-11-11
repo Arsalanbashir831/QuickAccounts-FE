@@ -1,6 +1,5 @@
 export const settingViews = [
-  { value: "business", label: "Business" },
-  { value: "locations", label: "Locations" },
+  { value: "business", label: "Shop" },
   { value: "team", label: "Team" },
   { value: "rules", label: "Rules" },
   { value: "data", label: "Data" },

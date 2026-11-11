@@ -7,5 +7,5 @@ export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage({ params, searchParams }: { params: Promise<{ companyId: string }>; searchParams: Promise<SearchQuery> }) {
   const [{ companyId }, query] = await Promise.all([params, searchParams]);
-  return <SettingsWorkspace companyId={companyId} initialView={parseAllowedValue(query.view, settingViews.map((view) => view.value), "business")} isSetup={query.mode === "setup"} />;
+  return <SettingsWorkspace companyId={companyId} initialView={parseAllowedValue(query.view, settingViews.map((view) => view.value), "business")} />;
 }

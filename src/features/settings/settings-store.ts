@@ -2,14 +2,13 @@
 
 import { useSyncExternalStore } from "react";
 
-export type TeamRole = "Owner" | "Manager" | "Accountant" | "Sales / Cashier" | "Inventory / Warehouse" | "Read only";
+export type TeamRole = "Owner" | "Cashier";
 
 export interface TeamMemberSetting {
   id: string;
   name: string;
   email: string;
   role: TeamRole;
-  locationId: string;
   status: "Active" | "Inactive";
 }
 
@@ -17,65 +16,59 @@ export interface CompanySettings {
   business: {
     name: string;
     legalName: string;
-    registrationNumber: string;
     taxNumber: string;
     phone: string;
     email: string;
     address: string;
     logoDataUrl?: string;
-    currency: "USD";
-    timeZone: "Asia/Karachi";
     dateFormat: "dd MMM yyyy" | "dd/MM/yyyy" | "yyyy-MM-dd";
   };
   team: TeamMemberSetting[];
   rules: {
+    /** Prefix for receipts and invoices, e.g. "KF" → KF-10231. */
     invoicePrefix: string;
     taxRate: number;
+    /** Shelf prices already include tax. */
     taxInclusive: boolean;
+    /** A size is "low" when this many pairs or fewer are left. */
     lowStockThreshold: number;
-    defaultSalesLocation: string;
-    defaultReceivingLocation: string;
+    /** Days after purchase a customer can return or exchange. */
+    returnDays: number;
+    receiptFooter: string;
     financialYearStart: string;
   };
 }
 
-export const teamRoles: readonly TeamRole[] = ["Owner", "Manager", "Accountant", "Sales / Cashier", "Inventory / Warehouse", "Read only"];
+export const teamRoles: readonly TeamRole[] = ["Owner", "Cashier"];
 
 export const defaultCompanySettings: CompanySettings = {
   business: {
-    name: "Northstar Traders",
+    name: "Kadam Footwear",
     legalName: "",
-    registrationNumber: "",
     taxNumber: "",
-    phone: "",
+    phone: "0300-0001122",
     email: "",
-    address: "",
-    currency: "USD",
-    timeZone: "Asia/Karachi",
+    address: "Shop 14, Liberty Market, Lahore",
     dateFormat: "dd MMM yyyy",
   },
   team: [
-    { id: "owner", name: "Demo Owner", email: "owner@dotcode.demo", role: "Owner", locationId: "all", status: "Active" },
-    { id: "stf-2", name: "Muhammad Usman", email: "usman@dotcode.demo", role: "Sales / Cashier", locationId: "main-outlet", status: "Active" },
-    { id: "stf-3", name: "Bilal Ahmed", email: "bilal@dotcode.demo", role: "Inventory / Warehouse", locationId: "main-warehouse", status: "Active" },
-    { id: "stf-4", name: "Ali Hassan", email: "ali@dotcode.demo", role: "Accountant", locationId: "main-outlet", status: "Active" },
+    { id: "owner", name: "Demo Owner", email: "owner@kadam.demo", role: "Owner", status: "Active" },
+    { id: "cashier", name: "Usman", email: "cashier@kadam.demo", role: "Cashier", status: "Active" },
   ],
   rules: {
-    invoicePrefix: "DOT-INV",
-    taxRate: 5,
-    taxInclusive: false,
-    lowStockThreshold: 5,
-    defaultSalesLocation: "main-outlet",
-    defaultReceivingLocation: "main-warehouse",
+    invoicePrefix: "KF",
+    taxRate: 0,
+    taxInclusive: true,
+    lowStockThreshold: 1,
+    returnDays: 7,
+    receiptFooter: "Exchange within 7 days with this receipt. Worn or damaged shoes cannot be returned.",
     financialYearStart: "07-01",
   },
 };
 
-const storageKey = (companyId: string) => `quickaccounts:settings:v1:${companyId}`;
+const storageKey = (companyId: string) => `quickaccounts:v2:settings:${companyId}`;
 const eventName = "quickaccounts:settings-updated";
 const cache = new Map<string, { raw: string | null; settings: CompanySettings }>();
-
-const isTeamRole = (value: unknown): value is TeamRole => teamRoles.includes(value as TeamRole);
 
 const isCompanySettings = (value: unknown): value is CompanySettings => {
   if (!value || typeof value !== "object") return false;
@@ -83,14 +76,13 @@ const isCompanySettings = (value: unknown): value is CompanySettings => {
   return Boolean(
     candidate.business && typeof candidate.business.name === "string" &&
     (candidate.business.logoDataUrl === undefined || (typeof candidate.business.logoDataUrl === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(candidate.business.logoDataUrl) && candidate.business.logoDataUrl.length <= 1_400_000)) &&
-    candidate.team && Array.isArray(candidate.team) && candidate.team.every((member) =>
+    Array.isArray(candidate.team) && candidate.team.every((member) =>
       member && typeof member.id === "string" && typeof member.name === "string" &&
-      typeof member.email === "string" && isTeamRole(member.role) &&
-      typeof member.locationId === "string" && (member.status === "Active" || member.status === "Inactive")) &&
+      typeof member.email === "string" && teamRoles.includes(member.role) &&
+      (member.status === "Active" || member.status === "Inactive")) &&
     candidate.rules && typeof candidate.rules.invoicePrefix === "string" &&
     typeof candidate.rules.taxRate === "number" && typeof candidate.rules.lowStockThreshold === "number" &&
-    typeof candidate.rules.defaultSalesLocation === "string" && typeof candidate.rules.defaultReceivingLocation === "string" &&
-    typeof candidate.rules.financialYearStart === "string"
+    typeof candidate.rules.returnDays === "number" && typeof candidate.rules.receiptFooter === "string",
   );
 };
 
@@ -103,7 +95,7 @@ export function readCompanySettings(companyId: string): CompanySettings {
   if (raw) {
     try {
       const parsed: unknown = JSON.parse(raw);
-      if (isCompanySettings(parsed)) settings = { ...parsed, business: { ...parsed.business, currency: "USD" } };
+      if (isCompanySettings(parsed)) settings = parsed;
     } catch { /* Use the demo defaults when saved browser settings are malformed. */ }
   }
   cache.set(companyId, { raw, settings });
@@ -113,6 +105,12 @@ export function readCompanySettings(companyId: string): CompanySettings {
 export function saveCompanySettings(companyId: string, settings: CompanySettings) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(storageKey(companyId), JSON.stringify(settings));
+  cache.delete(companyId);
+  window.dispatchEvent(new Event(eventName));
+}
+
+export function resetCompanySettings(companyId: string) {
+  window.localStorage.removeItem(storageKey(companyId));
   cache.delete(companyId);
   window.dispatchEvent(new Event(eventName));
 }
@@ -132,4 +130,18 @@ export function useCompanySettings(companyId: string) {
 
 export function isSettingsBundleSettings(value: unknown): value is CompanySettings {
   return isCompanySettings(value);
+}
+
+/** Formats an ISO date (yyyy-mm-dd) using the business's chosen date format. */
+export function formatDateWith(format: CompanySettings["business"]["dateFormat"], iso: string) {
+  if (!iso) return "";
+  if (format === "yyyy-MM-dd") return iso;
+  const date = new Date(`${iso}T12:00:00`);
+  if (format === "dd/MM/yyyy") return date.toLocaleDateString("en-GB");
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export function useDateFormatter(companyId: string) {
+  const { business } = useCompanySettings(companyId);
+  return (iso: string) => formatDateWith(business.dateFormat, iso);
 }

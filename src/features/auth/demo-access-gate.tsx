@@ -2,38 +2,32 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { readPurchaseOrders } from "@/features/purchases/purchase-store";
-import { readInvoices } from "@/features/sales/invoice-store";
-import { readLocations } from "@/features/settings/location-store";
-import { canOpenOutletRecord, canOpenPath, isOwner, useDemoSession } from "./demo-session";
+import { canOpenPath, useDemoSession } from "./demo-session";
+
+const noopSubscribe = () => () => {};
 
 export function DemoAccessGate({ companyId, children }: { companyId: string; children: ReactNode }) {
   const session = useDemoSession();
   const pathname = usePathname();
   const router = useRouter();
+  // The session lives in localStorage, so it is unknown until hydration finishes.
+  // Without this flag the first (server-snapshot) render would redirect signed-in users.
+  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   useEffect(() => {
-    if (!session) router.replace(`/access?next=${encodeURIComponent(pathname)}`);
-  }, [session, pathname, router]);
+    if (hydrated && !session) router.replace(`/access?next=${encodeURIComponent(pathname)}`);
+  }, [hydrated, session, pathname, router]);
 
   if (!session) return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">Opening sign in…</div>;
 
-  let allowed = canOpenPath(session, pathname, companyId);
-  if (allowed && !isOwner(session)) {
-    const base = `/c/${encodeURIComponent(companyId)}/`;
-    const path = pathname.slice(base.length);
-    const assignedName = readLocations(companyId).find((location) => location.id === session.locationId)?.name;
-    allowed = canOpenOutletRecord(path, assignedName, readInvoices(companyId), readPurchaseOrders(companyId));
-  }
-
-  if (!allowed) return (
+  if (!canOpenPath(session, pathname, companyId)) return (
     <div className="grid min-h-screen place-items-center bg-[#f4f5f3] p-6">
       <div className="max-w-md rounded-xl border bg-white p-8 text-center shadow-sm">
         <h1 className="text-xl font-bold text-heading">This area is for the owner</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Your demo role can work with its assigned outlet, sales, purchases, and stock. Company finance and other outlets are hidden.</p>
-        <Button asChild className="mt-5"><Link href={`/c/${encodeURIComponent(companyId)}/home`}>Go to my workspace</Link></Button>
+        <p className="mt-2 text-sm text-muted-foreground">Cashiers can sell, take returns, look up receipts and check stock. Purchases, money, reports and settings are for the owner.</p>
+        <Button asChild className="mt-5"><Link href={`/c/${encodeURIComponent(companyId)}/home`}>Go to my home</Link></Button>
       </div>
     </div>
   );

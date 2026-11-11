@@ -4,8 +4,8 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Dotcode", template: "%s · Dotcode" },
-  description: "Retail and wholesale operations, inventory and accounting.",
+  title: { default: "Dotcode Footwear", template: "%s · Dotcode Footwear" },
+  description: "POS, size-and-colour stock and simple accounting for small shoe stores.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
