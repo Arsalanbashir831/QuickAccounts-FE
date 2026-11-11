@@ -70,3 +70,39 @@ test("exchange for a dearer pair: customer pays the difference", async ({ page }
   const exchangeReceipt = page.getByRole("dialog", { name: /Receipt KF-/ });
   await expect(exchangeReceipt.getByText(/Exchange completed/)).toBeVisible();
 });
+
+test("exchange for any cheaper product: shop gives back the difference", async ({ page }) => {
+  await page.goto("/access");
+  await page.getByRole("button", { name: "Use owner@kadam.demo" }).click();
+  await page.getByRole("button", { name: /^Sign in/ }).click();
+  await page.waitForURL(/home/);
+
+  // Original sale: Stride Runner Pro, Rs 6,499
+  await page.goto("/c/demo-company/pos");
+  await page.getByRole("button", { name: /Stride Runner Pro/ }).click();
+  const picker = page.getByRole("dialog", { name: "Stride Runner Pro" });
+  await picker.getByRole("button", { name: /^41/ }).click();
+  await picker.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: /^Charge/ }).click();
+  const receipt = page.getByRole("dialog", { name: /Receipt KF-/ });
+  const number = (await receipt.getAttribute("aria-label"))!.replace("Receipt ", "");
+  await receipt.getByRole("button", { name: "Done" }).click();
+
+  // Swap for a Breeze Slide (Rs 1,299) + socks (Rs 499), chosen by browsing — no typing
+  await page.getByRole("tab", { name: "Return / exchange" }).click();
+  await page.getByRole("textbox", { name: "Receipt number" }).fill(number);
+  await page.getByRole("button", { name: /Return Stride Runner Pro 41/ }).click();
+  await page.getByRole("button", { name: /^Exchange/ }).click();
+  await page.getByRole("button", { name: "Sandals & Slides", exact: true }).click();
+  await page.getByRole("button", { name: /Breeze Slide/ }).click();
+  await page.getByRole("dialog", { name: "Breeze Slide" }).getByRole("button", { name: /^42/ }).click();
+  await page.getByRole("button", { name: "Accessories", exact: true }).click();
+  await page.getByRole("button", { name: /Cotton Ankle Socks/ }).click();
+  await page.getByRole("dialog", { name: /Cotton Ankle Socks/ }).getByRole("button", { name: /^\+1/ }).click();
+
+  await expect(page.getByText("Difference to give back")).toBeVisible();
+  await expect(page.getByText("Rs 4,701").first()).toBeVisible(); // 6,499 − (1,299 + 499)
+  await page.screenshot({ path: "test-results/exchange-cheaper.png", fullPage: true });
+  await page.getByRole("button", { name: "Give back Rs 4,701 & complete" }).click();
+  await expect(page.getByRole("dialog", { name: /Receipt KF-/ }).getByText(/refund Rs 4,701/)).toBeVisible();
+});

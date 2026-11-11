@@ -1,16 +1,16 @@
 "use client";
 
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Banknote, CheckCircle2, Minus, PackageCheck, PackageX, Plus, Repeat2, Search, Undo2, X } from "lucide-react";
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Banknote, CheckCircle2, Minus, PackageCheck, PackageX, Plus, Repeat2, ScanBarcode, Search, Undo2, X } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { variantPrice } from "@/domain/catalog";
+import { findByCode, variantPrice } from "@/domain/catalog";
 import { addDays, returnableQuantities, stockLevels, todayIso } from "@/domain/ledger";
 import { priceSale, type CartLineInput } from "@/domain/pricing";
 import { cartLine, createSale } from "@/domain/sale-builder";
 import { newId, recordAdjustments, recordSale, useBooks } from "@/domain/store";
-import type { Sale, SaleLine, Style } from "@/domain/types";
+import { categories, type Category, type Sale, type SaleLine, type Style } from "@/domain/types";
 import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { Swatch } from "@/features/catalog/components/size-color-grid";
 import { useCompanySettings, useDateFormatter } from "@/features/settings/settings-store";
@@ -53,6 +53,7 @@ export function ReturnExchange({ companyId, initialSaleId, onComplete }: { compa
   const [choice, setChoice] = useState<Choice | null>(null);
   const [newItems, setNewItems] = useState<CartLineInput[]>([]);
   const [styleQuery, setStyleQuery] = useState("");
+  const [category, setCategory] = useState<"All" | Category>("All");
   const [picker, setPicker] = useState<{ styleId: string; color?: string; size?: string } | null>(null);
   const [payment, setPayment] = useState<PaymentState>(() => initialPayment(books.accounts));
 
@@ -118,7 +119,20 @@ export function ReturnExchange({ companyId, initialSaleId, onComplete }: { compa
     reset();
   };
 
-  const filteredStyles = books.styles.filter((style) => style.active && (!styleQuery.trim() || [style.name, style.brand, style.code].some((value) => value.toLowerCase().includes(styleQuery.trim().toLowerCase())))).slice(0, 8);
+  // Any product can be taken in exchange — the difference (up or down) is settled on the right.
+  const activeStyles = books.styles.filter((style) => style.active);
+  const usedCategories = categories.filter((entry) => activeStyles.some((style) => style.category === entry));
+  const filteredStyles = activeStyles.filter((style) => (category === "All" || style.category === category) &&
+    (!styleQuery.trim() || [style.name, style.brand, style.code].some((value) => value.toLowerCase().includes(styleQuery.trim().toLowerCase()))));
+  const changeNewQty = (variantId: string, qty: number) => setNewItems((current) => qty <= 0
+    ? current.filter((line) => line.variantId !== variantId)
+    : current.map((line) => (line.variantId === variantId ? { ...line, qty: Math.min(qty, stock.get(variantId) ?? 0) } : line)));
+  const scanNew = (code: string) => {
+    const match = findByCode(books.styles, code);
+    if (!match) return false;
+    addNew(match.style, match.variant.id);
+    return true;
+  };
   const pickerStyle = books.styles.find((style) => style.id === picker?.styleId);
   const accountName = (id?: string) => books.accounts.find((account) => account.id === id)?.name ?? "cash drawer";
 
@@ -247,32 +261,66 @@ export function ReturnExchange({ companyId, initialSaleId, onComplete }: { compa
                 );
               })}
             </div>
-            <p className="mt-5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Or a different style</p>
+            <p className="mt-5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Or any other product — cheaper or dearer</p>
             <div className="relative mt-2">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input aria-label="Search styles for exchange" className="pl-9" placeholder="Search style name, brand or code" value={styleQuery} onChange={(event) => setStyleQuery(event.target.value)} />
+              <ScanBarcode className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input aria-label="Search styles for exchange" className="pl-9" placeholder="Scan a box, or search style name, brand or code" value={styleQuery}
+                onChange={(event) => setStyleQuery(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter" && scanNew(styleQuery)) { event.preventDefault(); setStyleQuery(""); } }} />
             </div>
-            {styleQuery.trim() ? (
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {filteredStyles.map((style) => (
-                  <button key={style.id} type="button" onClick={() => setPicker({ styleId: style.id })} className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm hover:border-primary/40">
-                    <span><span className="font-semibold text-heading">{style.name}</span><span className="ml-1.5 inline-flex gap-0.5 align-middle">{style.colors.map((color) => <Swatch key={color.name} hex={color.hex} className="size-2.5" />)}</span></span>
-                    <span className="tabular-nums">{money(style.price)}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            {newItems.length ? (
-              <ul className="mt-4 divide-y rounded-lg border">
-                {newItems.map((line) => (
-                  <li key={line.variantId} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                    <span><span className="font-semibold text-heading">{line.name}</span> · {variantText(line)}{line.qty > 1 ? ` × ${line.qty}` : ""}</span>
-                    <span className="flex items-center gap-2"><span className="font-semibold tabular-nums">{money(line.qty * line.price)}</span>
-                      <button type="button" aria-label={`Remove ${line.name} ${line.size}`} onClick={() => setNewItems(newItems.filter((entry) => entry.variantId !== line.variantId))} className="grid size-8 place-items-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="size-3.5" /></button>
+            <div className="-mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1 pb-1">
+              {(["All", ...usedCategories] as const).map((entry) => (
+                <button key={entry} type="button" aria-pressed={category === entry} onClick={() => setCategory(entry)}
+                  className={cn("h-8 shrink-0 rounded-md border px-3 text-xs font-semibold", category === entry ? "border-heading bg-heading text-white" : "text-muted-foreground hover:text-heading")}>
+                  {entry === "All" ? "All" : entry}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 grid max-h-80 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 2xl:grid-cols-3">
+              {filteredStyles.map((style) => {
+                const pairs = style.variants.reduce((sum, v) => sum + Math.max(0, (stock.get(v.id) ?? 0) - inNew(v.id)), 0);
+                const diff = style.price - returnValue;
+                return (
+                  <button key={style.id} type="button" disabled={pairs <= 0} onClick={() => setPicker({ styleId: style.id })}
+                    className="flex flex-col gap-1 rounded-lg border px-3 py-2 text-left text-sm hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50">
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="font-semibold text-heading">{style.name}</span>
+                      <span className="shrink-0 font-semibold tabular-nums">{money(style.price)}</span>
                     </span>
-                  </li>
-                ))}
-              </ul>
+                    <span className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">{style.colors.map((color) => <Swatch key={color.name} hex={color.hex} className="size-2.5" />)}<span className="ml-1">{pairs ? `${pairs} in stock` : "sold out"}</span></span>
+                      {returnLines.length && newItems.length === 0 ? (
+                        <span className={cn("font-semibold", diff > 0 ? "text-success-foreground" : diff < 0 ? "text-destructive" : "")}>
+                          {diff > 0 ? `+${money(diff)}` : diff < 0 ? `−${money(-diff)}` : "same value"}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                );
+              })}
+              {!filteredStyles.length ? <p className="text-sm text-muted-foreground">No styles match.</p> : null}
+            </div>
+            {newItems.length ? (
+              <div className="mt-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Going out with the customer</p>
+                <ul className="mt-2 divide-y rounded-lg border">
+                  {newItems.map((line) => (
+                    <li key={line.variantId} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 text-sm">
+                      <span><span className="font-semibold text-heading">{line.name}</span> · {variantText(line)} · {money(line.price)}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-md border bg-background">
+                          <button type="button" aria-label={`Fewer ${line.name} ${line.size}`} onClick={() => changeNewQty(line.variantId, line.qty - 1)} className="grid size-8 place-items-center text-muted-foreground"><Minus className="size-3" /></button>
+                          <span className="w-7 text-center text-xs font-bold">{line.qty}</span>
+                          <button type="button" aria-label={`More ${line.name} ${line.size}`} disabled={line.qty >= (stock.get(line.variantId) ?? 0)} onClick={() => changeNewQty(line.variantId, line.qty + 1)} className="grid size-8 place-items-center text-muted-foreground disabled:opacity-35"><Plus className="size-3" /></button>
+                        </span>
+                        <span className="w-20 text-right font-semibold tabular-nums">{money(line.qty * line.price)}</span>
+                        <button type="button" aria-label={`Remove ${line.name} ${line.size}`} onClick={() => changeNewQty(line.variantId, 0)} className="grid size-8 place-items-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="size-3.5" /></button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs text-muted-foreground">You can add more than one item, including socks or care kits. If the new items cost less, the customer gets the difference back.</p>
+              </div>
             ) : null}
           </Step>
         ) : null}
@@ -300,7 +348,7 @@ export function ReturnExchange({ companyId, initialSaleId, onComplete }: { compa
                   {total === 0 ? "Nothing to pay" : money(Math.abs(total))}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {total === 0 ? "Same value — just swap the pairs." : direction === "in" ? "The new pair costs more. Customer pays the difference." : choice === "refund" ? "Give the customer their money back." : "The new pair costs less. Give the customer the difference."}
+                  {total === 0 ? "Same value — just swap the pairs." : direction === "in" ? "What they’re taking costs more. Customer pays the difference." : choice === "refund" ? "Give the customer their money back." : "What they’re taking costs less. Give the customer the difference."}
                 </p>
               </div>
               {total !== 0 ? <div className="mt-4"><PaymentPanel amount={Math.abs(total)} direction={direction} customer={customer} accounts={books.accounts} value={payment} onChange={setPayment} /></div> : null}
