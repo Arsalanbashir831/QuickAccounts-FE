@@ -14,6 +14,7 @@ import { PosReceiptDialog, paymentLabel } from "@/features/pos/components/pos-re
 import { useCompanySettings, useDateFormatter } from "@/features/settings/settings-store";
 import { useMoney } from "@/lib/format/money";
 import { InvoicePrintDialog } from "./components/invoice-print-template";
+import { settlementLabel, settlementOf } from "@/domain/returns";
 import { statusTone } from "./sales-workspace";
 
 export function SaleDetails({ companyId, saleId }: { companyId: string; saleId: string }) {
@@ -75,9 +76,24 @@ export function SaleDetails({ companyId, saleId }: { companyId: string; saleId: 
       </div>
       {canReturn && !withinWindow ? <p className="rounded-lg bg-warning/14 px-4 py-2 text-sm text-warning-foreground">This sale is older than the {settings.rules.returnDays}-day return window.{owner ? " As the owner you can still accept a return." : " Only the owner can accept a return now."}</p> : null}
 
+      {kind !== "Sale" ? (() => {
+        const settlement = settlementOf(sale);
+        return (
+          <Card className="grid gap-4 p-5 sm:grid-cols-3">
+            <div><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Came back</p><p className="numeric mt-1 text-xl font-semibold text-heading">{money(settlement.returnValue)}</p><p className="text-xs text-muted-foreground">{sale.lines.filter((line) => line.qty < 0).reduce((sum, line) => sum - line.qty, 0)} item(s) returned to stock</p></div>
+            <div><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Went out</p><p className="numeric mt-1 text-xl font-semibold text-heading">{money(settlement.newValue)}</p><p className="text-xs text-muted-foreground">{settlement.newValue ? "given in exchange" : "nothing — money back"}</p></div>
+            <div className={settlement.kind === "customer-pays" ? "rounded-lg bg-success/12 p-3" : settlement.kind === "even" ? "rounded-lg bg-muted p-3" : "rounded-lg bg-destructive/10 p-3"}>
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Settlement</p>
+              <p className="mt-1 text-sm font-semibold text-heading">{settlementLabel(sale, money).replace(/^(Exchange|Return) · /, "")}</p>
+              {settlement.amount && sale.method !== "credit" ? <p className="text-xs text-muted-foreground">by {paymentLabel(sale).toLowerCase()}</p> : null}
+            </div>
+          </Card>
+        );
+      })() : null}
+
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card className="overflow-hidden">
-          <CardHeader><CardTitle>Items</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{kind === "Sale" ? "Items" : "Pairs in and out"}</CardTitle></CardHeader>
           <Table>
             <TableHeader>
               <TableRow>
@@ -114,7 +130,7 @@ export function SaleDetails({ companyId, saleId }: { companyId: string; saleId: 
             <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="tabular-nums">{money(sale.subtotal)}</dd></div>
             {sale.discount ? <div className="flex justify-between"><dt className="text-muted-foreground">Discount</dt><dd className="tabular-nums">−{money(sale.discount)}</dd></div> : null}
             {sale.tax ? <div className="flex justify-between"><dt className="text-muted-foreground">Sales tax</dt><dd className="tabular-nums">{money(sale.tax)}</dd></div> : null}
-            <div className="flex justify-between border-t pt-2 text-base font-bold text-heading"><dt>{sale.total < 0 ? "Refund" : "Total"}</dt><dd className="tabular-nums">{money(Math.abs(sale.total))}</dd></div>
+            <div className="flex justify-between border-t pt-2 text-base font-bold text-heading"><dt>{kind === "Sale" ? "Total" : sale.total > 0 ? "Customer paid extra" : sale.total < 0 ? "Given back" : "Difference"}</dt><dd className="tabular-nums">{money(Math.abs(sale.total))}</dd></div>
           </dl>
         </Card>
 

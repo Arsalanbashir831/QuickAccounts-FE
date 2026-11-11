@@ -17,6 +17,7 @@ import { isOwner, useDemoSession } from "@/features/auth/demo-session";
 import { useDateFormatter } from "@/features/settings/settings-store";
 import { useMoney } from "@/lib/format/money";
 import { paymentLabel } from "@/features/pos/components/pos-receipt-dialog";
+import { settlementLabel } from "@/domain/returns";
 
 
 type Range = "today" | "7d" | "30d" | "all";
@@ -88,7 +89,7 @@ export function SalesWorkspace({ companyId, view }: { companyId: string; view: S
               <TableHead>Date</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Items</TableHead>
-              <TableHead>Payment</TableHead>
+              <TableHead>Payment / settlement</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Total</TableHead>
             </TableRow>
@@ -109,7 +110,7 @@ export function SalesWorkspace({ companyId, view }: { companyId: string; view: S
                   <TableCell className="max-w-72 text-xs text-muted-foreground">
                     <span className="line-clamp-2">{sale.lines.map((line) => `${line.qty < 0 ? "↩ " : ""}${line.name} ${line.size === "OS" ? line.color : `${line.color} ${line.size}`}${Math.abs(line.qty) > 1 ? ` ×${Math.abs(line.qty)}` : ""}`).join(", ")}</span>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-xs">{paymentLabel(sale)}</TableCell>
+                  <TableCell className="text-xs">{kind === "Sale" ? paymentLabel(sale) : <>{settlementLabel(sale, money).replace(/^(Exchange|Return) · /, "")}{sale.total !== 0 && sale.method !== "credit" ? <span className="block text-muted-foreground">{paymentLabel(sale)}</span> : null}</>}</TableCell>
                   <TableCell><Badge tone={statusTone(status)}>{status}</Badge></TableCell>
                   <TableCell className="text-right font-semibold tabular-nums text-heading">{money(sale.total)}</TableCell>
                 </TableRow>

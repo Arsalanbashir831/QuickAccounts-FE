@@ -4,6 +4,7 @@ import { CheckCircle2, Printer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { saleKind } from "@/domain/ledger";
+import { settlementOf } from "@/domain/returns";
 import type { Sale } from "@/domain/types";
 import { formatDateWith, type CompanySettings } from "@/features/settings/settings-store";
 import { formatMoney } from "@/lib/format/money";
@@ -26,6 +27,7 @@ export function buildReceiptHTML(sale: Sale, settings: CompanySettings, accountN
   const businessMeta = [business.address, business.phone, business.taxNumber ? `NTN ${business.taxNumber}` : ""]
     .map((line) => line?.trim()).filter(Boolean).map((line) => escapeHtml(line as string)).join("<br>");
   const kind = saleKind(sale);
+  const settlement = settlementOf(sale);
   const title = kind === "Return" ? "Refund receipt" : kind === "Exchange" ? "Exchange receipt" : "Sales receipt";
   const itemRows = sale.lines.map((line) => {
     const variant = line.size === "OS" ? line.color : `${line.color} · Size ${line.size}`;
@@ -91,7 +93,8 @@ export function buildReceiptHTML(sale: Sale, settings: CompanySettings, accountN
     <div><span>Subtotal</span><strong>${money(sale.subtotal)}</strong></div>
     ${sale.discount > 0 ? `<div><span>Discount</span><strong>−${money(sale.discount)}</strong></div>` : ""}
     ${sale.tax > 0 ? `<div><span>Sales tax (${rules.taxRate}%${rules.taxInclusive ? " incl." : ""})</span><strong>${money(sale.tax)}</strong></div>` : ""}
-    <div class="grand"><span>${sale.total < 0 ? "REFUND" : "TOTAL"}</span><strong>${money(Math.abs(sale.total))}</strong></div>
+    ${kind === "Sale" ? "" : `<div><span>Returned</span><strong>${money(settlement.returnValue)}</strong></div>${settlement.newValue ? `<div><span>New items</span><strong>${money(settlement.newValue)}</strong></div>` : ""}`}
+    <div class="grand"><span>${kind === "Sale" ? "TOTAL" : kind === "Return" ? "REFUND" : sale.total > 0 ? "YOU PAID EXTRA" : sale.total < 0 ? "WE PAID BACK" : "EVEN EXCHANGE"}</span><strong>${money(Math.abs(sale.total))}</strong></div>
   </section>
   <section class="payment">
     <div><span>Payment</span><strong>${escapeHtml(paymentLabel(sale))}</strong></div>
